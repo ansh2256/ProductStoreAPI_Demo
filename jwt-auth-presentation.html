@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JWT Authentication — .NET Core Web API</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #07090f;
+    --surface: #0d1117;
+    --surface2: #161b22;
+    --surface3: #1c2230;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --faint: #3d444d;
+    --accent: #6366f1;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --purple: #a78bfa;
+    --blue: #60a5fa;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 32px 24px 48px;
+    background-image:
+      radial-gradient(ellipse at 15% 40%, rgba(99,102,241,0.07) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 20%, rgba(16,185,129,0.05) 0%, transparent 50%);
+  }
+
+  /* ── Header ── */
+  .header { text-align: center; margin-bottom: 40px; }
+  .header .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding: 4px 14px;
+    border: 1px solid rgba(99,102,241,.3);
+    border-radius: 20px;
+  }
+  .header h1 {
+    font-size: clamp(26px, 4vw, 42px);
+    font-weight: 600;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+  .header h1 span { color: var(--accent); }
+  .header p { color: var(--muted); font-size: 14px; }
+
+  /* ── Progress ── */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .step-dot {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .dot-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    border: 1.5px solid var(--faint);
+    background: var(--surface);
+    color: var(--muted);
+    transition: all .3s;
+    position: relative;
+    z-index: 1;
+  }
+  .dot-circle.done { border-color: var(--green); color: var(--green); background: rgba(16,185,129,.08); }
+  .dot-circle.active { color: #fff; border-color: transparent; box-shadow: 0 0 0 3px rgba(99,102,241,.35); }
+  .dot-line { width: 40px; height: 1.5px; background: var(--faint); transition: background .3s; }
+  .dot-line.done { background: var(--green); }
+
+  /* ── Main card ── */
+  .card {
+    width: 100%; max-width: 1000px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  /* ── Arena (actors) ── */
+  .arena {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr 1fr;
+    border-bottom: 1px solid var(--border);
+    min-height: 160px;
+  }
+
+  .actor {
+    padding: 28px 20px;
+    text-align: center;
+    transition: background .4s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .actor.active-left  { background: rgba(99,102,241,.06); }
+  .actor.active-right { background: rgba(16,185,129,.05); }
+  .actor-icon { font-size: 38px; transition: transform .3s; }
+  .actor.active-left .actor-icon,
+  .actor.active-right .actor-icon { animation: floatIcon 2s ease-in-out infinite; }
+  @keyframes floatIcon { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .actor-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .actor-sub  { font-size: 11px; color: var(--muted); }
+  .actor-badge {
+    margin-top: 4px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .4s, transform .4s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .actor-badge.show { opacity: 1; transform: translateY(0); }
+
+  /* ── Wire ── */
+  .wire-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    position: relative;
+  }
+  #wire-svg { width: 100%; overflow: visible; }
+  .wire-label-text {
+    font-size: 11px;
+    fill: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Step info ── */
+  .step-info {
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    animation: slideUp .35s ease both;
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  .step-left {}
+  .step-number-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  }
+  .step-num-circle {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .step-title { font-size: 18px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .step-analogy { font-size: 12px; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  .step-desc { font-size: 14px; color: var(--muted); line-height: 1.75; margin-top: 12px; }
+
+  /* ── Code ── */
+  .code-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.9;
+    color: var(--muted);
+    position: relative;
+    overflow: hidden;
+  }
+  .code-block::before {
+    content: attr(data-lang);
+    position: absolute; top: 10px; right: 14px;
+    font-size: 10px; letter-spacing: .1em;
+    color: var(--faint);
+    text-transform: uppercase;
+  }
+  .code-block .kw { color: #79c0ff; }
+  .code-block .fn { color: #d2a8ff; }
+  .code-block .str { color: #a5d6ff; }
+  .code-block .cmt { color: #3d444d; }
+  .code-block .num { color: var(--amber); }
+  .code-block .cls { color: #ffa657; }
+  .code-block .ok  { color: var(--green); }
+  .code-block .err { color: var(--red); }
+  .code-block .hl  { color: var(--text); }
+
+  /* ── JWT anatomy ── */
+  .jwt-box {
+    border-top: 1px solid var(--border);
+    padding: 20px 32px;
+    display: none;
+    animation: slideUp .35s ease both;
+  }
+  .jwt-box.visible { display: block; }
+  .jwt-label-row { font-size: 11px; color: var(--muted); letter-spacing: .08em; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+  .jwt-token-str {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    word-break: break-all;
+    margin-bottom: 12px;
+  }
+  .jwt-parts { display: flex; gap: 20px; flex-wrap: wrap; }
+  .jwt-part { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .jwt-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .jwt-part-name { font-weight: 600; }
+  .jwt-part-desc { color: var(--muted); }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex; gap: 12px; justify-content: center;
+    margin-bottom: 24px; flex-wrap: wrap;
+  }
+  button {
+    padding: 10px 22px;
+    border-radius: 10px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  button:hover { background: var(--surface3); color: var(--text); border-color: var(--border2); }
+  #btn-next {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+    box-shadow: 0 0 24px rgba(99,102,241,.3);
+  }
+  #btn-next:hover { background: #7577f3; box-shadow: 0 0 32px rgba(99,102,241,.5); }
+
+  /* ── Footer legend ── */
+  .legend {
+    display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+    font-size: 12px; color: var(--muted);
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+
+  /* ── Keyboard hint ── */
+  .keyhint {
+    margin-top: 20px;
+    font-size: 11px;
+    color: var(--faint);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+  }
+  .keyhint kbd {
+    display: inline-block;
+    padding: 2px 7px;
+    border: 1px solid var(--faint);
+    border-radius: 5px;
+    font-family: inherit;
+    font-size: 11px;
+  }
+
+  @media (max-width: 700px) {
+    .step-info { grid-template-columns: 1fr; }
+    .arena { grid-template-columns: 1fr; min-height: auto; }
+    .wire-wrap { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="tag">.NET Core Web API</div>
+  <h1>JWT <span>Authentication</span> Flow</h1>
+  <p>A step-by-step visual walkthrough — with real code and the coffee shop analogy</p>
+</div>
+
+<!-- Progress -->
+<div class="progress-row" id="progress-row"></div>
+
+<!-- Main card -->
+<div class="card">
+  <!-- Arena -->
+  <div class="arena">
+    <!-- Client -->
+    <div class="actor" id="actor-client">
+      <div class="actor-icon" id="icon-client">💻</div>
+      <div class="actor-name">Client</div>
+      <div class="actor-sub">React / Browser</div>
+      <div class="actor-badge" id="badge-client"></div>
+    </div>
+
+    <!-- Wire -->
+    <div class="wire-wrap">
+      <svg id="wire-svg" height="80" viewBox="0 0 340 80">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <!-- Base wire -->
+        <line x1="0" y1="40" x2="340" y2="40" stroke="#1c2230" stroke-width="1.5"/>
+        <!-- Animated packet -->
+        <circle id="pkt" cx="-20" cy="40" r="8" fill="#6366f1" opacity="0"/>
+        <!-- Wire label -->
+        <text id="wire-label" x="170" y="20" text-anchor="middle" class="wire-label-text"></text>
+        <!-- Sub label -->
+        <text id="wire-sublabel" x="170" y="68" text-anchor="middle" class="wire-label-text" style="font-size:10px;fill:#3d444d"></text>
+      </svg>
+    </div>
+
+    <!-- Server -->
+    <div class="actor" id="actor-server">
+      <div class="actor-icon" id="icon-server">🖥️</div>
+      <div class="actor-name">Server</div>
+      <div class="actor-sub">.NET Core Web API</div>
+      <div class="actor-badge" id="badge-server"></div>
+    </div>
+  </div>
+
+  <!-- Step info -->
+  <div class="step-info" id="step-info">
+    <div class="step-left">
+      <div class="step-number-row">
+        <div class="step-num-circle" id="step-num-circle">1</div>
+        <div>
+          <div class="step-title" id="step-title"></div>
+          <div class="step-analogy" id="step-analogy"></div>
+        </div>
+      </div>
+      <p class="step-desc" id="step-desc"></p>
+    </div>
+    <div class="code-block" id="code-block" data-lang="C#"></div>
+  </div>
+
+  <!-- JWT anatomy -->
+  <div class="jwt-box" id="jwt-box">
+    <div class="jwt-label-row">JWT token structure</div>
+    <div class="jwt-token-str">
+      <span style="color:#f87171">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span><span style="color:#3d444d">.</span><span style="color:#fbbf24">eyJ1c2VySWQiOiIxMjMiLCJlbWFpbCI6InNhcmFoQGVtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiZXhwIjoxNzAwMDAwMDAwfQ</span><span style="color:#3d444d">.</span><span style="color:#34d399">xK8mN2zQpRvL9wTnBcYeUoDaFsGhIjKl</span>
+    </div>
+    <div class="jwt-parts">
+      <div class="jwt-part">
+        <div class="jwt-dot" style="background:#f87171"></div>
+        <span class="jwt-part-name" style="color:#f87171">Header</span>
+        <span class="jwt-part-desc">algorithm &amp; token type</span>
+      </div>
+      <div class="jwt-part">
+        <div class="jwt-dot" style="background:#fbbf24"></div>
+        <span class="jwt-part-name" style="color:#fbbf24">Payload</span>
+        <span class="jwt-part-desc">user claims + expiry</span>
+      </div>
+      <div class="jwt-part">
+        <div class="jwt-dot" style="background:#34d399"></div>
+        <span class="jwt-part-name" style="color:#34d399">Signature</span>
+        <span class="jwt-part-desc">HMAC-SHA256 tamper seal</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <button id="btn-reset" onclick="reset()">↺  Reset</button>
+  <button id="btn-auto"  onclick="toggleAuto()">▶  Auto Play</button>
+  <button id="btn-next"  onclick="advance()">Next Step  →</button>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <span>💻 Client (Browser / React)</span>
+  <span>🖥️ Server (.NET Core API)</span>
+  <span>🏷️ JWT Token</span>
+  <span>☕ Coffee shop analogy</span>
+</div>
+
+<div class="keyhint">
+  <kbd>→</kbd> next &nbsp;|&nbsp; <kbd>←</kbd> back &nbsp;|&nbsp; <kbd>Space</kbd> auto play &nbsp;|&nbsp; <kbd>R</kbd> reset
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: "User login request",
+    analogy: "☕ Sarah walks to the counter and shows her ID",
+    desc: "Sarah's browser sends her email and password to the .NET Core API over HTTPS. This is the only time raw credentials are ever sent on the wire.",
+    clientBadge: "Sending credentials…", serverBadge: null,
+    dir: "right", color: "#f59e0b", accentClient: true, accentServer: false,
+    jwt: false,
+    wireLabel: "POST /api/auth/login",
+    wireSub: "{ email, password }",
+    code: `<span class="cmt">// AuthController.cs</span>
+<span class="kw">[ApiController, Route("api/[controller]")]</span>
+<span class="kw">public class</span> <span class="cls">AuthController</span> : ControllerBase
+{
+  <span class="kw">[HttpPost(<span class="str">"login"</span>)]</span>
+  <span class="kw">public</span> IActionResult <span class="fn">Login</span>(<span class="cls">LoginDto</span> dto)
+  {`
+  },
+  {
+    title: "Server validates credentials",
+    analogy: "☕ Barista checks the member database",
+    desc: "The server queries the database, finds Sarah's record and compares the provided password against the stored BCrypt hash. If they don't match — 401 Unauthorized.",
+    clientBadge: null, serverBadge: "Checking DB…",
+    dir: null, color: "#10b981", accentClient: false, accentServer: true,
+    jwt: false,
+    wireLabel: "Validating…",
+    wireSub: "DB lookup + hash compare",
+    code: `<span class="cmt">    // UserService.cs</span>
+    <span class="kw">var</span> user = <span class="hl">_userService</span>.<span class="fn">Authenticate</span>(dto);
+
+    <span class="kw">if</span> (user == <span class="kw">null</span>)
+      <span class="kw">return</span> <span class="err">Unauthorized()</span>; <span class="cmt">// 401</span>
+
+    <span class="cmt">// BCrypt.Verify(dto.Password, user.PasswordHash)</span>`
+  },
+  {
+    title: "JWT token created & signed",
+    analogy: "☕ Barista stamps the wristband with a secret seal",
+    desc: "The server builds a JWT with Sarah's claims (userId, email, role) and a 1-hour expiry. It's signed with HMAC-SHA256 using a secret key — impossible to forge without that key.",
+    clientBadge: null, serverBadge: "Signing token…",
+    dir: null, color: "#a78bfa", accentClient: false, accentServer: true,
+    jwt: true,
+    wireLabel: "Generating JWT…",
+    wireSub: "header.payload.signature",
+    code: `<span class="cmt">    // JwtTokenService.cs</span>
+    <span class="kw">var</span> key = <span class="kw">new</span> <span class="cls">SymmetricSecurityKey</span>(
+      Encoding.UTF8.<span class="fn">GetBytes</span>(_cfg[<span class="str">"Jwt:Key"</span>]));
+
+    <span class="kw">var</span> token = <span class="kw">new</span> <span class="cls">JwtSecurityToken</span>(
+      claims: claims,
+      expires: DateTime.UtcNow.<span class="fn">AddHours</span>(<span class="num">1</span>),
+      signingCredentials: <span class="kw">new</span>(key, <span class="str">HmacSha256</span>));`
+  },
+  {
+    title: "Token delivered to client",
+    analogy: "☕ Sarah receives the wristband — stores it in her bag",
+    desc: "The API responds with HTTP 200 and the signed JWT string. Sarah's browser stores it in localStorage. She never needs to enter her password again until the token expires.",
+    clientBadge: "Token stored!", serverBadge: null,
+    dir: "left", color: "#a78bfa", accentClient: true, accentServer: false,
+    jwt: true,
+    wireLabel: "HTTP 200 OK",
+    wireSub: "{ token: \"eyJhbGci...\" }",
+    code: `    <span class="kw">return</span> <span class="ok">Ok</span>(<span class="kw">new</span> {
+      token = <span class="kw">new</span> <span class="cls">JwtSecurityTokenHandler</span>()
+                .<span class="fn">WriteToken</span>(token)
+    });
+
+    <span class="cmt">// Client:</span>
+    <span class="cmt">// localStorage.setItem('jwt', token)</span>`
+  },
+  {
+    title: "Protected API request",
+    analogy: "☕ Sarah flashes her wristband — no ID check needed",
+    desc: "Every subsequent request attaches the JWT in the Authorization header as a Bearer token. No password, no session, no cookies — just the token as cryptographic proof.",
+    clientBadge: "Attaching token…", serverBadge: null,
+    dir: "right", color: "#60a5fa", accentClient: true, accentServer: false,
+    jwt: true,
+    wireLabel: "GET /api/orders",
+    wireSub: "Authorization: Bearer eyJhbGci…",
+    code: `<span class="cmt">// Axios interceptor (client-side)</span>
+axios.interceptors.request.<span class="fn">use</span>(config => {
+  <span class="kw">const</span> token = localStorage.<span class="fn">getItem</span>(<span class="str">'jwt'</span>);
+  <span class="kw">if</span> (token)
+    config.headers.Authorization = <span class="str">\`Bearer \${token}\`</span>;
+  <span class="kw">return</span> config;
+});`
+  },
+  {
+    title: "Server verifies the token",
+    analogy: "☕ Barista reads the stamp — no database call needed!",
+    desc: "The [Authorize] middleware verifies the HMAC-SHA256 signature cryptographically. If signature valid + not expired = pass. Zero database calls. This is JWT's superpower — stateless auth at scale.",
+    clientBadge: null, serverBadge: "Verifying sig…",
+    dir: null, color: "#10b981", accentClient: false, accentServer: true,
+    jwt: true,
+    wireLabel: "Verifying signature…",
+    wireSub: "✓ sig valid  ✓ not expired",
+    code: `<span class="cmt">// Program.cs — JWT Middleware setup</span>
+builder.Services.<span class="fn">AddAuthentication</span>(JwtBearer...)
+  .<span class="fn">AddJwtBearer</span>(o => {
+    o.TokenValidationParameters = <span class="kw">new</span>() {
+      ValidateSignature  = <span class="kw">true</span>,
+      ValidateLifetime   = <span class="kw">true</span>,
+      IssuerSigningKey   = key
+    };
+  });`
+  },
+  {
+    title: "Access granted!",
+    analogy: "☕ Sarah gets her coffee. Seamless, fast, secure.",
+    desc: "Sarah receives her orders data. One login, unlimited requests until the 1-hour expiry — then she logs in once more. The whole flow is stateless: the server holds no session data.",
+    clientBadge: "Data received!", serverBadge: "Request served!",
+    dir: "left", color: "#f59e0b", accentClient: true, accentServer: true,
+    jwt: true,
+    wireLabel: "HTTP 200 OK",
+    wireSub: "{ orders: [ … ] }",
+    code: `<span class="cmt">// OrdersController.cs</span>
+<span class="kw">[Authorize]</span>
+<span class="kw">[HttpGet]</span>
+<span class="kw">public</span> IActionResult <span class="fn">GetOrders</span>()
+{
+  <span class="kw">var</span> userId = User.<span class="fn">FindFirst</span>(
+    ClaimTypes.NameIdentifier)?.Value;
+  <span class="kw">return</span> <span class="ok">Ok</span>(_orderService.<span class="fn">GetByUser</span>(userId));
+}`
+  }
+];
+
+let step = 0, auto = false, autoTimer = null, busy = false;
+
+// ── Build progress dots ──
+function buildProgress() {
+  const row = document.getElementById('progress-row');
+  row.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'step-dot';
+    dot.innerHTML = `<div class="dot-circle ${i < step ? 'done' : ''} ${i === step ? 'active' : ''}"
+      style="${i === step ? 'background:' + s.color + ';border-color:' + s.color : ''}"
+      onclick="goTo(${i})">${i < step ? '✓' : i + 1}</div>`;
+    row.appendChild(dot);
+    if (i < STEPS.length - 1) {
+      const line = document.createElement('div');
+      line.className = 'dot-line' + (i < step ? ' done' : '');
+      row.appendChild(line);
+    }
+  });
+}
+
+// ── Animate packet ──
+function animatePacket(dir, color) {
+  const pkt = document.getElementById('pkt');
+  const w = 340;
+  const startX = dir === 'right' ? -10 : w + 10;
+  const endX   = dir === 'right' ? w + 10 : -10;
+  pkt.setAttribute('fill', color);
+  pkt.setAttribute('cx', startX);
+  pkt.setAttribute('opacity', '1');
+
+  const dur = 900;
+  const start = performance.now();
+  function frame(t) {
+    const p = Math.min((t - start) / dur, 1);
+    const ease = p < .5 ? 2*p*p : -1 + (4 - 2*p)*p;
+    pkt.setAttribute('cx', startX + (endX - startX) * ease);
+    pkt.setAttribute('opacity', p > .8 ? String(1 - (p-.8)/.2) : '1');
+    if (p < 1) requestAnimationFrame(frame);
+    else pkt.setAttribute('opacity', '0');
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── Render current step ──
+function render(animate) {
+  const s = STEPS[step];
+  buildProgress();
+
+  // Step info animation
+  const panel = document.getElementById('step-info');
+  panel.style.animation = 'none';
+  void panel.offsetWidth;
+  panel.style.animation = 'slideUp .35s ease both';
+
+  // Num circle
+  const nc = document.getElementById('step-num-circle');
+  nc.textContent = step + 1;
+  nc.style.background = s.color;
+  nc.style.color = '#07090f';
+
+  document.getElementById('step-title').textContent = s.title;
+  document.getElementById('step-analogy').textContent = s.analogy;
+  document.getElementById('step-analogy').style.color = s.color;
+  document.getElementById('step-desc').textContent = s.desc;
+  document.getElementById('code-block').innerHTML = s.code;
+
+  // Wire labels
+  document.getElementById('wire-label').textContent = s.wireLabel;
+  document.getElementById('wire-sublabel').textContent = s.wireSub;
+
+  // Actor highlights
+  const ac = document.getElementById('actor-client');
+  const as_ = document.getElementById('actor-server');
+  ac.className = 'actor' + (s.accentClient ? ' active-left' : '');
+  as_.className = 'actor' + (s.accentServer ? ' active-right' : '');
+
+  // Badges
+  const bc = document.getElementById('badge-client');
+  const bs = document.getElementById('badge-server');
+  if (s.clientBadge) {
+    bc.textContent = s.clientBadge;
+    bc.style.background = s.color + '20';
+    bc.style.color = s.color;
+    bc.classList.add('show');
+  } else { bc.classList.remove('show'); }
+  if (s.serverBadge) {
+    bs.textContent = s.serverBadge;
+    bs.style.background = s.color + '20';
+    bs.style.color = s.color;
+    bs.classList.add('show');
+  } else { bs.classList.remove('show'); }
+
+  // Wire packet
+  if (s.dir && animate !== false) animatePacket(s.dir, s.color);
+
+  // JWT box
+  document.getElementById('jwt-box').className = 'jwt-box' + (s.jwt ? ' visible' : '');
+
+  // Next btn text
+  document.getElementById('btn-next').textContent = step === STEPS.length - 1 ? '↺  Restart' : 'Next Step  →';
+}
+
+function advance() {
+  if (busy) return;
+  busy = true;
+  step = (step + 1) % STEPS.length;
+  render(true);
+  setTimeout(() => busy = false, 500);
+}
+
+function goTo(i) {
+  step = i;
+  render(false);
+}
+
+function reset() {
+  step = 0;
+  if (auto) toggleAuto();
+  render(false);
+}
+
+function toggleAuto() {
+  auto = !auto;
+  document.getElementById('btn-auto').textContent = auto ? '⏸  Pause' : '▶  Auto Play';
+  if (auto) {
+    autoTimer = setInterval(() => {
+      step = (step + 1) % STEPS.length;
+      render(true);
+    }, 2800);
+  } else {
+    clearInterval(autoTimer);
+  }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') advance();
+  else if (e.key === 'ArrowLeft') { step = Math.max(0, step - 1); render(false); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'r' || e.key === 'R') reset();
+});
+
+// Init
+render(false);
+</script>
+</body>
+</html>

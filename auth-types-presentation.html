@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authentication Types & Identity Providers — .NET Core</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0d1117;--s2:#161b22;--s3:#1c2230;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e6edf3;--muted:#7d8590;--faint:#2d333b;
+  --accent:#6366f1;--green:#10b981;--amber:#f59e0b;--red:#ef4444;
+  --blue:#60a5fa;--pink:#f472b6;--teal:#2dd4bf;--purple:#a78bfa;
+  --orange:#fb923c;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;
+  background-image:radial-gradient(ellipse at 10% 30%,rgba(99,102,241,.07) 0%,transparent 55%),radial-gradient(ellipse at 90% 70%,rgba(45,212,191,.04) 0%,transparent 50%);}
+
+/* TABS */
+.tabs-bar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;gap:0;}
+.tab-btn{padding:15px 20px;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:'Inter',sans-serif;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent);}
+.tab-content{display:none;padding:36px 28px 60px;animation:fadeUp .3s ease both;}
+.tab-content.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* HERO */
+.hero{text-align:center;max-width:720px;margin:0 auto 44px;}
+.hero .badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--accent);padding:5px 16px;border:1px solid rgba(99,102,241,.3);border-radius:20px;margin-bottom:16px;}
+.hero h1{font-size:clamp(26px,4.5vw,46px);font-weight:700;letter-spacing:-1.5px;line-height:1.05;margin-bottom:14px;}
+.hero h1 em{font-style:normal;color:var(--accent);}
+.hero p{font-size:15px;color:var(--muted);line-height:1.7;}
+
+/* GRID */
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;max-width:1060px;margin:0 auto;}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;max-width:1060px;margin:0 auto;}
+
+/* SECTION */
+.section-title{font-size:21px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;}
+.section-sub{font-size:14px;color:var(--muted);margin-bottom:28px;}
+
+/* AUTH CARD */
+.auth-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .2s,transform .2s;cursor:pointer;}
+.auth-card:hover{transform:translateY(-3px);}
+.auth-card-header{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;}
+.auth-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.auth-title{font-size:16px;font-weight:600;}
+.auth-subtitle{font-size:11px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;}
+.auth-body{padding:16px 22px;}
+.auth-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px;}
+.auth-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;font-family:'JetBrains Mono',monospace;}
+.auth-pros-cons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.pros,.cons{border-radius:8px;padding:10px 12px;}
+.pros{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.15);}
+.cons{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.15);}
+.pros-title{font-size:10px;font-weight:600;color:var(--green);letter-spacing:.1em;margin-bottom:6px;}
+.cons-title{font-size:10px;font-weight:600;color:var(--red);letter-spacing:.1em;margin-bottom:6px;}
+.pros li,.cons li{font-size:11px;color:var(--muted);list-style:none;padding:2px 0;}
+.pros li::before{content:"✓ ";color:var(--green);}
+.cons li::before{content:"✗ ";color:var(--red);}
+
+/* CODE BOX */
+.code-box{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;color:var(--muted);margin-top:14px;position:relative;overflow:hidden;}
+.code-box::before{content:attr(data-label);position:absolute;top:8px;right:12px;font-size:10px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;}
+.kw{color:#79c0ff}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cmt{color:#3d444d}.num{color:var(--amber)}.cls{color:#ffa657}.ok{color:var(--green)}.err{color:var(--red)}.hl{color:var(--text)}.hdr{color:var(--pink)}.mime{color:var(--teal)}
+
+/* FLOW DIAGRAM for comparison */
+.compare-wrap{max-width:1060px;margin:0 auto;}
+.compare-row{display:grid;grid-template-columns:200px 1fr;gap:20px;margin-bottom:14px;align-items:start;}
+.compare-label{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;}
+.compare-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.flow-node{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--s2);white-space:nowrap;}
+.flow-arrow{color:var(--faint);font-size:18px;flex-shrink:0;}
+
+/* IDENTITY PROVIDERS */
+.idp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;max-width:1060px;margin:0 auto 32px;}
+.idp-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;transition:border-color .2s,transform .2s;cursor:pointer;}
+.idp-card:hover{transform:translateY(-3px);border-color:var(--border2);}
+.idp-logo{font-size:32px;margin-bottom:10px;}
+.idp-name{font-size:14px;font-weight:600;margin-bottom:4px;}
+.idp-type{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px;}
+.idp-tags{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;}
+
+/* INTERACTIVE SELECTOR */
+.selector-wrap{max-width:1060px;margin:0 auto;}
+.scenario-btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;}
+.scen-btn{padding:10px 18px;border-radius:10px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;}
+.scen-btn:hover{border-color:var(--border2);color:var(--text);}
+.scen-btn.active{color:#fff;border-color:transparent;font-weight:600;}
+.recommendation{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:28px;animation:fadeUp .3s ease both;}
+.rec-header{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
+.rec-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+.rec-title{font-size:20px;font-weight:700;}
+.rec-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+.rec-body{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.rec-why{font-size:13px;color:var(--muted);line-height:1.75;}
+.rec-stack{display:flex;flex-direction:column;gap:8px;}
+.stack-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border-radius:8px;font-size:12px;}
+.stack-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* DOTNET SETUP STEPS */
+.setup-wrap{max-width:1060px;margin:0 auto;}
+.setup-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;}
+.setup-nav-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;transition:all .2s;}
+.setup-nav-btn:hover{color:var(--text);border-color:var(--border2);}
+.setup-nav-btn.active{color:#fff;border-color:transparent;}
+.setup-panel{display:none;animation:fadeUp .25s ease both;}
+.setup-panel.active{display:block;}
+.setup-step{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;}
+.setup-step-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.setup-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;font-family:'JetBrains Mono',monospace;}
+.setup-step-title{font-size:14px;font-weight:600;}
+.setup-step-desc{font-size:12px;color:var(--muted);margin-top:2px;}
+.setup-step-body{padding:16px 20px;}
+
+/* CTRL */
+.keyhint{text-align:center;margin-top:20px;font-size:11px;color:var(--faint);font-family:'JetBrains Mono',monospace;}
+.keyhint kbd{display:inline-block;padding:2px 7px;border:1px solid var(--faint);border-radius:5px;font-family:inherit;font-size:10px;}
+
+@media(max-width:700px){
+  .tab-content{padding:20px 14px 48px;}
+  .tabs-bar{padding:0 14px;}
+  .auth-pros-cons,.rec-body{grid-template-columns:1fr;}
+  .compare-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab(0)">① Overview</button>
+  <button class="tab-btn" onclick="switchTab(1)">② Auth Types</button>
+  <button class="tab-btn" onclick="switchTab(2)">③ How Each Works</button>
+  <button class="tab-btn" onclick="switchTab(3)">④ Identity Providers</button>
+  <button class="tab-btn" onclick="switchTab(4)">⑤ Pick the Right One</button>
+  <button class="tab-btn" onclick="switchTab(5)">⑥ .NET Core Code</button>
+</div>
+
+<!-- ═══════ TAB 0 — OVERVIEW ═══════ -->
+<div class="tab-content active" id="tab-0">
+  <div class="hero">
+    <div class="badge">.NET Core Web API</div>
+    <h1>Authentication Types &amp;<br><em>Identity Providers</em></h1>
+    <p>Who are you? How do you prove it? And who decides? — Every API must answer these three questions. This presentation covers every major approach and when to use each one.</p>
+  </div>
+
+  <div style="max-width:1060px;margin:0 auto;">
+    <!-- Big concept split -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:32px;">
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:22px;">
+        <div style="font-size:28px;margin-bottom:12px;">🔐</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Authentication</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.65;">"Who are you?" — Verifying the identity of the caller. Is this actually Sarah, or someone pretending to be her?</div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:22px;">
+        <div style="font-size:28px;margin-bottom:12px;">🛡️</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Authorization</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.65;">"What can you do?" — Once we know who you are, what are you allowed to access? Different from authentication!</div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:22px;">
+        <div style="font-size:28px;margin-bottom:12px;">🏢</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Identity Provider</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.65;">"Who vouches for you?" — A trusted third party (Google, Azure AD, Auth0) that manages identities so you don't have to.</div>
+      </div>
+    </div>
+
+    <!-- The landscape -->
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:26px;margin-bottom:24px;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:20px;">The Authentication Landscape</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+        <div onclick="switchTab(1)" style="padding:14px;background:var(--s2);border:1px solid rgba(99,102,241,.25);border-radius:10px;cursor:pointer;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:20px;margin-bottom:6px;">🔑</div>
+          <div style="font-size:12px;font-weight:600;color:var(--accent)">JWT Bearer</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Stateless tokens</div>
+        </div>
+        <div onclick="switchTab(1)" style="padding:14px;background:var(--s2);border:1px solid rgba(245,158,11,.25);border-radius:10px;cursor:pointer;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:20px;margin-bottom:6px;">🍪</div>
+          <div style="font-size:12px;font-weight:600;color:var(--amber)">Cookie / Session</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Server-side state</div>
+        </div>
+        <div onclick="switchTab(1)" style="padding:14px;background:var(--s2);border:1px solid rgba(96,165,250,.25);border-radius:10px;cursor:pointer;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:20px;margin-bottom:6px;">🔒</div>
+          <div style="font-size:12px;font-weight:600;color:var(--blue)">OAuth 2.0</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Delegated access</div>
+        </div>
+        <div onclick="switchTab(1)" style="padding:14px;background:var(--s2);border:1px solid rgba(167,139,250,.25);border-radius:10px;cursor:pointer;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:20px;margin-bottom:6px;">🪪</div>
+          <div style="font-size:12px;font-weight:600;color:var(--purple)">OpenID Connect</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">OAuth + identity</div>
+        </div>
+        <div onclick="switchTab(1)" style="padding:14px;background:var(--s2);border:1px solid rgba(244,114,182,.25);border-radius:10px;cursor:pointer;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:20px;margin-bottom:6px;">🗝️</div>
+          <div style="font-size:12px;font-weight:600;color:var(--pink)">API Keys</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Simple M2M</div>
+        </div>
+        <div onclick="switchTab(1)" style="padding:14px;background:var(--s2);border:1px solid rgba(251,146,60,.25);border-radius:10px;cursor:pointer;text-align:center;transition:transform .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:20px;margin-bottom:6px;">📜</div>
+          <div style="font-size:12px;font-weight:600;color:var(--orange)">mTLS / Cert</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Zero trust</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:14px;padding:20px;text-align:center;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px;">The Golden Rule</div>
+      <div style="font-size:13px;color:var(--muted);">Authentication = <span style="color:var(--green)">proving identity</span>. Authorization = <span style="color:var(--blue)">permission to act</span>. They are different. JWT does authentication. <code style="font-family:'JetBrains Mono',monospace;color:var(--purple)">[Authorize(Roles="Admin")]</code> does authorization.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ TAB 1 — AUTH TYPES ═══════ -->
+<div class="tab-content" id="tab-1">
+  <div style="max-width:1060px;margin:0 auto;">
+    <div class="section-title">Authentication Methods</div>
+    <div class="section-sub">Six approaches — each with a different trust model, use case and tradeoff</div>
+    <div class="grid-3" id="auth-cards-grid"></div>
+  </div>
+</div>
+
+<!-- ═══════ TAB 2 — HOW EACH WORKS ═══════ -->
+<div class="tab-content" id="tab-2">
+  <div class="compare-wrap">
+    <div class="section-title">How Each Flow Works</div>
+    <div class="section-sub">The sequence of steps each authentication type goes through — from request to access granted</div>
+
+    <div id="flow-selector" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;"></div>
+    <div id="flow-display" style="background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:26px;animation:fadeUp .3s ease both;"></div>
+  </div>
+</div>
+
+<!-- ═══════ TAB 3 — IDENTITY PROVIDERS ═══════ -->
+<div class="tab-content" id="tab-3">
+  <div style="max-width:1060px;margin:0 auto;">
+    <div class="section-title">Identity Providers (IdPs)</div>
+    <div class="section-sub">Trusted third parties that manage authentication so your API doesn't have to store passwords</div>
+
+    <div class="idp-grid" id="idp-grid"></div>
+
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:26px;margin-top:8px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:18px;">How an IdP fits into your .NET Core API</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">
+        <div style="background:var(--s2);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:20px;margin-bottom:6px;">💻</div>
+          <div style="font-size:12px;font-weight:600;">Your App</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">React / Mobile / Desktop</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;">→</div>
+        <div style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:20px;margin-bottom:6px;">🏢</div>
+          <div style="font-size:12px;font-weight:600;color:var(--purple)">Identity Provider</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Google / Azure / Auth0</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;">→</div>
+        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:20px;margin-bottom:6px;">🎟️</div>
+          <div style="font-size:12px;font-weight:600;color:var(--green)">JWT Token issued</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Signed by IdP</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;">→</div>
+        <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:20px;margin-bottom:6px;">🖥️</div>
+          <div style="font-size:12px;font-weight:600;color:var(--accent)">.NET Core API</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Validates token only</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;padding:14px;background:var(--s2);border-radius:10px;">
+        <span style="color:var(--green)">Key insight:</span> Your .NET Core API <strong style="color:var(--text)">never handles passwords</strong> when using an IdP. It only validates the JWT token the IdP issued. The IdP is responsible for login forms, MFA, social login, password resets — all of it.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ TAB 4 — PICK THE RIGHT ONE ═══════ -->
+<div class="tab-content" id="tab-4">
+  <div class="selector-wrap">
+    <div class="section-title">Which Should You Use?</div>
+    <div class="section-sub">Pick your scenario — get a tailored recommendation</div>
+    <div class="scenario-btns" id="scenario-btns"></div>
+    <div id="recommendation-panel"></div>
+  </div>
+</div>
+
+<!-- ═══════ TAB 5 — .NET CORE CODE ═══════ -->
+<div class="tab-content" id="tab-5">
+  <div class="setup-wrap">
+    <div class="section-title">.NET Core Implementation</div>
+    <div class="section-sub">Copy-paste ready setup code for each authentication type</div>
+    <div class="setup-nav" id="setup-nav"></div>
+    <div id="setup-panels"></div>
+  </div>
+</div>
+
+<script>
+function switchTab(i){
+  document.querySelectorAll('.tab-content').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.querySelectorAll('.tab-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+}
+
+// ─── AUTH TYPES DATA ───
+const AUTH_TYPES = [
+  {
+    id:'jwt', icon:'🔑', color:'#6366f1', title:'JWT Bearer Token', subtitle:'RFC 7519',
+    desc:'A signed, self-contained token carrying user claims. The server verifies the signature cryptographically — no database lookup needed. The current gold standard for REST APIs.',
+    tags:['Stateless','REST APIs','Microservices'],tagColors:['#6366f1','#10b981','#60a5fa'],
+    pros:['Stateless — no session DB','Scales horizontally easily','Works across domains & services','Rich claims built in'],
+    cons:['Tokens can\'t be revoked early','Secret key must be protected','Larger payload than session ID'],
+    useCase:'Web APIs, SPAs, mobile apps, microservices',
+    flow:['Client sends credentials','Server issues signed JWT','Client stores token','Client sends Bearer token','Server verifies signature','Access granted — no DB call'],
+    flowColors:['#f59e0b','#6366f1','#60a5fa','#6366f1','#10b981','#10b981']
+  },
+  {
+    id:'cookie', icon:'🍪', color:'#f59e0b', title:'Cookie / Session', subtitle:'Traditional web auth',
+    desc:'Server creates a session on login, stores state server-side, and sends a session ID cookie to the browser. Browser sends cookie automatically on every request.',
+    tags:['Stateful','MVC Apps','Browser-only'],tagColors:['#f59e0b','#fb923c','#fbbf24'],
+    pros:['Automatic browser handling','Easy to revoke sessions','CSRF protection built-in (SameSite)','No token management in JS'],
+    cons:['Requires session store (Redis/DB)','Doesn\'t scale without sticky sessions','Not suitable for APIs consumed by mobile'],
+    useCase:'Traditional MVC web apps, server-rendered pages',
+    flow:['User submits login form','Server validates & creates session','Session ID stored in DB/Redis','Cookie sent to browser','Browser auto-sends cookie','Server looks up session ID'],
+    flowColors:['#f59e0b','#10b981','#f59e0b','#60a5fa','#60a5fa','#10b981']
+  },
+  {
+    id:'oauth', icon:'🔒', color:'#60a5fa', title:'OAuth 2.0', subtitle:'RFC 6749',
+    desc:'An authorization framework (not authentication!) that allows an app to access resources on behalf of a user without sharing credentials. "Login with Google" uses OAuth.',
+    tags:['Delegated access','Third-party','Social login'],tagColors:['#60a5fa','#6366f1','#f472b6'],
+    pros:['User never shares passwords with your app','Industry standard & widely supported','Scoped access (read-only, etc.)','Refresh tokens for long sessions'],
+    cons:['Complex flow — 4 parties involved','Needs authorization server','More roundtrips than JWT','OAuth alone doesn\'t give you user identity'],
+    useCase:'Third-party integrations, social login, delegated access',
+    flow:['User clicks "Login with Google"','App redirects to Google','User authorizes your app','Google returns auth code','App exchanges code for tokens','App calls API with access token'],
+    flowColors:['#60a5fa','#f472b6','#f59e0b','#60a5fa','#6366f1','#10b981']
+  },
+  {
+    id:'oidc', icon:'🪪', color:'#a78bfa', title:'OpenID Connect', subtitle:'OAuth 2.0 + Identity',
+    desc:'OAuth 2.0 extended with an ID Token (JWT) that contains user identity. This is the modern standard for "Login with Google/Microsoft/GitHub". OAuth 2.0 gives authorization; OIDC adds authentication.',
+    tags:['SSO','Identity layer','Modern standard'],tagColors:['#a78bfa','#6366f1','#10b981'],
+    pros:['OAuth 2.0 + user identity in one flow','Standardized user info endpoint','Supports SSO across apps','JWT-based — works with your .NET middleware'],
+    cons:['More complex than bare JWT','Requires OIDC-capable identity provider','Discovery document needed'],
+    useCase:'Enterprise SSO, social login with identity, B2C apps',
+    flow:['User clicks "Sign in with Microsoft"','App redirects to OIDC provider','User authenticates at provider','Provider returns code','App gets Access Token + ID Token','ID Token (JWT) has user claims'],
+    flowColors:['#a78bfa','#f472b6','#f59e0b','#a78bfa','#6366f1','#10b981']
+  },
+  {
+    id:'apikey', icon:'🗝️', color:'#f472b6', title:'API Keys', subtitle:'Machine-to-machine',
+    desc:'A long random string generated per client. Sent in a header or query string. Simple but powerful for M2M (machine-to-machine) scenarios and public APIs.',
+    tags:['M2M','Simple','No user context'],tagColors:['#f472b6','#fb923c','#fbbf24'],
+    pros:['Extremely simple to implement','No complex flows','Works without a user','Easy to rotate and revoke'],
+    cons:['No user identity — just client identity','Must be stored securely (env vars)','No built-in expiry — must rotate manually','Vulnerable if leaked'],
+    useCase:'Public APIs, developer platforms, server-to-server calls',
+    flow:['Developer registers for API key','Key stored in client env vars','Client sends key in X-Api-Key header','Server looks up key in DB','Checks rate limits & permissions','Access granted or denied'],
+    flowColors:['#f472b6','#f59e0b','#f472b6','#10b981','#60a5fa','#10b981']
+  },
+  {
+    id:'mtls', icon:'📜', color:'#fb923c', title:'mTLS / Certificates', subtitle:'Zero Trust Network',
+    desc:'Mutual TLS — both client AND server present certificates. Both sides verify each other. No tokens, no passwords — cryptographic identity at the transport layer. Used in Zero Trust architectures.',
+    tags:['Zero Trust','Internal services','Enterprise'],tagColors:['#fb923c','#f59e0b','#ef4444'],
+    pros:['Strongest authentication possible','No secrets to steal — only certs','Automatic in service meshes (Istio)','Phishing-resistant by design'],
+    cons:['Complex certificate management','PKI infrastructure needed','Harder to debug','Overkill for most APIs'],
+    useCase:'Microservice meshes, banking/fintech, zero-trust internal APIs',
+    flow:['Client presents its certificate','Server verifies cert against CA','Server presents its certificate','Client verifies server cert','Mutual trust established','Encrypted channel — data flows'],
+    flowColors:['#fb923c','#10b981','#fb923c','#10b981','#6366f1','#10b981']
+  }
+];
+
+// ─── RENDER AUTH CARDS ───
+function renderAuthCards(){
+  const grid = document.getElementById('auth-cards-grid');
+  grid.innerHTML = AUTH_TYPES.map(a=>`
+    <div class="auth-card" style="border-color:${a.color}22;" onmouseover="this.style.borderColor='${a.color}55'" onmouseout="this.style.borderColor='${a.color}22'">
+      <div class="auth-card-header">
+        <div class="auth-icon" style="background:${a.color}18;">${a.icon}</div>
+        <div>
+          <div class="auth-title">${a.title}</div>
+          <div class="auth-subtitle">${a.subtitle}</div>
+        </div>
+      </div>
+      <div class="auth-body">
+        <div class="auth-desc">${a.desc}</div>
+        <div class="auth-tags">${a.tags.map((t,i)=>`<span class="tag" style="background:${a.tagColors[i]}18;color:${a.tagColors[i]}">${t}</span>`).join('')}</div>
+        <div class="auth-pros-cons">
+          <div class="pros"><div class="pros-title">PROS</div><ul>${a.pros.map(p=>`<li>${p}</li>`).join('')}</ul></div>
+          <div class="cons"><div class="cons-title">CONS</div><ul>${a.cons.map(c=>`<li>${c}</li>`).join('')}</ul></div>
+        </div>
+        <div style="margin-top:12px;padding:8px 12px;background:var(--s2);border-radius:8px;font-size:11px;color:var(--muted);">
+          <span style="color:${a.color};font-weight:600">Best for: </span>${a.useCase}
+        </div>
+      </div>
+    </div>`).join('');
+}
+renderAuthCards();
+
+// ─── FLOW DIAGRAMS ───
+function renderFlowSelector(){
+  const sel = document.getElementById('flow-selector');
+  sel.innerHTML = AUTH_TYPES.map((a,i)=>`
+    <button onclick="showFlow(${i})" id="flow-btn-${i}" class="scen-btn ${i===0?'active':''}" style="${i===0?'background:'+a.color+';color:#fff;border-color:transparent':''}">
+      ${a.icon} ${a.title.split(' ')[0]}
+    </button>`).join('');
+  showFlow(0);
+}
+
+function showFlow(i){
+  AUTH_TYPES.forEach((_,j)=>{
+    const b=document.getElementById('flow-btn-'+j);
+    b.classList.toggle('active',j===i);
+    b.style.background=j===i?AUTH_TYPES[j].color:'';
+    b.style.color=j===i?'#fff':'';
+    b.style.borderColor=j===i?'transparent':'';
+  });
+  const a=AUTH_TYPES[i];
+  const display=document.getElementById('flow-display');
+  display.style.animation='none';void display.offsetWidth;display.style.animation='fadeUp .3s ease both';
+  display.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;">
+      <div style="width:42px;height:42px;border-radius:12px;background:${a.color}18;display:flex;align-items:center;justify-content:center;font-size:22px;">${a.icon}</div>
+      <div>
+        <div style="font-size:17px;font-weight:700;">${a.title} Flow</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${a.subtitle}</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px;">
+      ${a.flow.map((step,si)=>`
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:${a.flowColors[si]}20;border:1.5px solid ${a.flowColors[si]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${a.flowColors[si]};flex-shrink:0;font-family:'JetBrains Mono',monospace;">${si+1}</div>
+          <div style="flex:1;height:1px;background:${si<a.flow.length-1?a.flowColors[si]+'40':'transparent'};display:${si<a.flow.length-1?'block':'none'}"></div>
+          <div style="padding:10px 16px;background:${a.flowColors[si]}12;border:1px solid ${a.flowColors[si]}30;border-radius:10px;font-size:13px;font-weight:500;color:var(--text);flex:4;">${step}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="padding:14px 16px;background:var(--s2);border-radius:10px;font-size:13px;color:var(--muted);line-height:1.7;">
+      <span style="color:${a.color};font-weight:600;">Use this when: </span>${a.useCase}
+    </div>`;
+}
+renderFlowSelector();
+
+// ─── IDENTITY PROVIDERS ───
+const IDPS = [
+  {logo:'🟦',name:'Microsoft Entra ID',type:'Azure AD',color:'#60a5fa',tags:['Enterprise SSO','Office 365','B2B'],desc:'Best for enterprise — integrates with all Microsoft services, Active Directory sync, Conditional Access.'},
+  {logo:'🔴',name:'Google Identity',type:'Google OAuth / OIDC',color:'#ef4444',tags:['Consumer','Social Login','OIDC'],desc:'Billions of Google accounts. Perfect for consumer apps. Easy setup via Google Cloud Console.'},
+  {logo:'⚫',name:'Auth0',type:'Identity-as-a-Service',color:'#a78bfa',tags:['Any scale','Social + Enterprise','Customizable'],desc:'The easiest to set up. Supports 30+ social providers, enterprise connections, MFA — all via config.'},
+  {logo:'🟠',name:'Okta',type:'Enterprise IdP',color:'#fb923c',tags:['Enterprise','Workforce','SAML + OIDC'],desc:'Industry standard for workforce identity. Deep enterprise integrations, SCIM provisioning, SAML.'},
+  {logo:'🐙',name:'GitHub',type:'OAuth / OIDC',color:'#7d8590',tags:['Developers','Public APIs','Open Source'],desc:'Perfect for developer tools and platforms. Every developer has a GitHub account.'},
+  {logo:'🟣',name:'Keycloak',type:'Self-hosted IdP',color:'#a78bfa',tags:['Open Source','Self-hosted','Full control'],desc:'Free, open source, self-hosted. Full control over data. OIDC, SAML, social login. Popular in enterprises.'},
+  {logo:'🔵',name:'AWS Cognito',type:'AWS Identity',color:'#f59e0b',tags:['AWS native','Scalable','Serverless'],desc:'Deep AWS integration. User pools for consumer auth, identity pools for AWS resource access.'},
+  {logo:'🌐',name:'IdentityServer',type:'.NET native',color:'#10b981',tags:['.NET native','Self-hosted','OpenID Certified'],desc:'The .NET-native OIDC server. Full control, hosted in your infrastructure, certified compliant.'},
+];
+
+function renderIdps(){
+  document.getElementById('idp-grid').innerHTML=IDPS.map(p=>`
+    <div class="idp-card" style="border-color:${p.color}22" onmouseover="this.style.borderColor='${p.color}55'" onmouseout="this.style.borderColor='${p.color}22'">
+      <div class="idp-logo">${p.logo}</div>
+      <div class="idp-name">${p.name}</div>
+      <div class="idp-type" style="color:${p.color}">${p.type}</div>
+      <div class="idp-tags">${p.tags.map(t=>`<span class="tag" style="background:${p.color}15;color:${p.color}">${t}</span>`).join('')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;text-align:left;">${p.desc}</div>
+    </div>`).join('');
+}
+renderIdps();
+
+// ─── SCENARIOS ───
+const SCENARIOS = [
+  {
+    label:'🏢 Enterprise Internal App', color:'#60a5fa',
+    rec:'Microsoft Entra ID (Azure AD) + OIDC',
+    icon:'🏢', recColor:'#60a5fa',
+    why:'Your employees already have Microsoft/Office 365 accounts. Entra ID gives you SSO, MFA, Conditional Access (block logins from outside the country), and integrates with all Microsoft tools — zero password management.',
+    stack:[
+      {color:'#60a5fa',text:'Microsoft Entra ID as IdP'},
+      {color:'#a78bfa',text:'OpenID Connect flow'},
+      {color:'#6366f1',text:'JWT Bearer tokens in .NET Core'},
+      {color:'#10b981',text:'[Authorize(Roles="Employee")] for access control'},
+    ]
+  },
+  {
+    label:'📱 Consumer Mobile App', color:'#a78bfa',
+    rec:'Auth0 or Google Identity + OIDC',
+    icon:'📱', recColor:'#a78bfa',
+    why:'Consumer apps need social login (Google, Apple, Facebook) to reduce friction. Auth0 handles all providers in one SDK. Google Identity is free and trusted by billions. Add MFA and passwordless login easily.',
+    stack:[
+      {color:'#a78bfa',text:'Auth0 or Google Identity as IdP'},
+      {color:'#6366f1',text:'OIDC / OAuth 2.0 PKCE flow'},
+      {color:'#10b981',text:'JWT access tokens for API calls'},
+      {color:'#f59e0b',text:'Refresh tokens for background sync'},
+    ]
+  },
+  {
+    label:'⚙️ Microservice-to-Microservice', color:'#fb923c',
+    rec:'JWT Bearer + OAuth 2.0 Client Credentials',
+    icon:'⚙️', recColor:'#fb923c',
+    why:'No human user involved. Service A gets a token from your auth server using its client_id + client_secret (Client Credentials flow). Service B validates the JWT signature. No passwords, no sessions — pure machine identity.',
+    stack:[
+      {color:'#fb923c',text:'OAuth 2.0 Client Credentials Grant'},
+      {color:'#6366f1',text:'JWT access tokens between services'},
+      {color:'#f472b6',text:'API Keys as simpler alternative'},
+      {color:'#2dd4bf',text:'mTLS for zero-trust environments'},
+    ]
+  },
+  {
+    label:'🌐 Public REST API', color:'#f472b6',
+    rec:'API Keys + optional JWT',
+    icon:'🌐', recColor:'#f472b6',
+    why:'Developers building on your platform need a simple way to authenticate. API Keys are easy to understand, easy to rotate, and easy to revoke. Add rate limiting per key. Optionally add JWT for user-scoped endpoints.',
+    stack:[
+      {color:'#f472b6',text:'API Keys for developer access'},
+      {color:'#f59e0b',text:'X-Api-Key header convention'},
+      {color:'#6366f1',text:'JWT Bearer for user-scoped calls'},
+      {color:'#10b981',text:'Rate limiting per API key'},
+    ]
+  },
+  {
+    label:'🔓 Open Source / Dev Tool', color:'#7d8590',
+    rec:'GitHub OAuth + OIDC',
+    icon:'🔓', recColor:'#7d8590',
+    why:'Every developer has GitHub. "Login with GitHub" gives you verified developer identity instantly. You get their username, email, orgs and repos — useful for tools like CI systems, code review apps, dev dashboards.',
+    stack:[
+      {color:'#7d8590',text:'GitHub OAuth 2.0 / OIDC'},
+      {color:'#6366f1',text:'JWT tokens after GitHub callback'},
+      {color:'#10b981',text:'GitHub org membership as authorization'},
+      {color:'#a78bfa',text:'Aspire.Authentication.GitHub NuGet'},
+    ]
+  },
+  {
+    label:'🏦 Banking / High Security', color:'#10b981',
+    rec:'mTLS + Hardware Certificates',
+    icon:'🏦', recColor:'#10b981',
+    why:'Financial systems need the highest assurance. mTLS means both sides present certificates — no token can be stolen from a header. Pair with short-lived JWTs for user sessions. PCI-DSS and open banking mandates often require this.',
+    stack:[
+      {color:'#10b981',text:'mTLS at transport layer'},
+      {color:'#fb923c',text:'Client certificates per service'},
+      {color:'#6366f1',text:'Short-lived JWTs (15 min expiry)'},
+      {color:'#ef4444',text:'Hardware Security Modules (HSM)'},
+    ]
+  },
+];
+
+function renderScenarios(){
+  const btns=document.getElementById('scenario-btns');
+  btns.innerHTML=SCENARIOS.map((s,i)=>`<button class="scen-btn ${i===0?'active':''}" style="${i===0?'background:'+s.color+';color:#fff;border-color:transparent':''}" onclick="pickScenario(${i},this)">${s.label}</button>`).join('');
+  showScenario(0);
+}
+function pickScenario(i,btn){
+  document.querySelectorAll('.scen-btn').forEach(b=>{b.classList.remove('active');b.style.background='';b.style.color='';b.style.borderColor='';});
+  btn.classList.add('active');btn.style.background=SCENARIOS[i].color;btn.style.color='#fff';btn.style.borderColor='transparent';
+  showScenario(i);
+}
+function showScenario(i){
+  const s=SCENARIOS[i];
+  document.getElementById('recommendation-panel').innerHTML=`
+    <div class="recommendation" style="border-color:${s.recColor}30">
+      <div class="rec-header">
+        <div class="rec-icon" style="background:${s.recColor}18;font-size:26px;">${s.icon}</div>
+        <div>
+          <div class="rec-title">Use: <span style="color:${s.recColor}">${s.rec}</span></div>
+          <div class="rec-sub">${s.label}</div>
+        </div>
+      </div>
+      <div class="rec-body">
+        <div class="rec-why">${s.why}</div>
+        <div class="rec-stack">
+          ${s.stack.map(st=>`<div class="stack-item"><div class="stack-dot" style="background:${st.color}"></div><span style="color:${st.color};font-family:'JetBrains Mono',monospace;font-size:12px;">${st.text}</span></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+renderScenarios();
+
+// ─── .NET CODE PANELS ───
+const SETUP_PANELS = [
+  {
+    label:'JWT Bearer', color:'#6366f1',
+    steps:[
+      {num:1,color:'#6366f1',title:'Install NuGet',desc:'Add JWT authentication package',code:`<span class="ok">$</span> dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer`,lang:'Terminal'},
+      {num:2,color:'#6366f1',title:'Program.cs setup',desc:'Register JWT middleware',code:`builder.Services.<span class="fn">AddAuthentication</span>(JwtBearerDefaults.AuthenticationScheme)
+  .<span class="fn">AddJwtBearer</span>(options =>
+  {
+      options.TokenValidationParameters = <span class="kw">new</span> TokenValidationParameters
+      {
+          ValidateIssuer           = <span class="kw">true</span>,
+          ValidateAudience         = <span class="kw">true</span>,
+          ValidateLifetime         = <span class="kw">true</span>,
+          ValidateIssuerSigningKey = <span class="kw">true</span>,
+          ValidIssuer       = builder.Configuration[<span class="str">"Jwt:Issuer"</span>],
+          ValidAudience     = builder.Configuration[<span class="str">"Jwt:Audience"</span>],
+          IssuerSigningKey  = <span class="kw">new</span> SymmetricSecurityKey(
+              Encoding.UTF8.<span class="fn">GetBytes</span>(builder.Configuration[<span class="str">"Jwt:Key"</span>]!))
+      };
+  });
+
+app.<span class="fn">UseAuthentication</span>(); <span class="cmt">// ← must be before UseAuthorization</span>
+app.<span class="fn">UseAuthorization</span>();`,lang:'Program.cs'},
+      {num:3,color:'#6366f1',title:'Protect endpoints',desc:'Use [Authorize] attribute',code:`<span class="kw">[Authorize]</span>                          <span class="cmt">// any authenticated user</span>
+<span class="kw">[Authorize(Roles = <span class="str">"Admin"</span>)]</span>        <span class="cmt">// role-based</span>
+<span class="kw">[Authorize(Policy = <span class="str">"PremiumOnly"</span>)]</span>  <span class="cmt">// policy-based</span>
+<span class="kw">[AllowAnonymous]</span>                   <span class="cmt">// public endpoint</span>`,lang:'Controller'},
+    ]
+  },
+  {
+    label:'Azure AD / Entra', color:'#60a5fa',
+    steps:[
+      {num:1,color:'#60a5fa',title:'Install packages',desc:'Microsoft Identity Web',code:`<span class="ok">$</span> dotnet add package Microsoft.Identity.Web`,lang:'Terminal'},
+      {num:2,color:'#60a5fa',title:'Program.cs',desc:'One line for Azure AD auth',code:`builder.Services.<span class="fn">AddMicrosoftIdentityWebApiAuthentication</span>(
+    builder.Configuration,
+    configSectionName: <span class="str">"AzureAd"</span>
+);`,lang:'Program.cs'},
+      {num:3,color:'#60a5fa',title:'appsettings.json',desc:'Azure AD configuration',code:`{
+  <span class="str">"AzureAd"</span>: {
+    <span class="str">"Instance"</span>:  <span class="str">"https://login.microsoftonline.com/"</span>,
+    <span class="str">"TenantId"</span>:  <span class="str">"your-tenant-id"</span>,
+    <span class="str">"ClientId"</span>:  <span class="str">"your-client-id"</span>,
+    <span class="str">"Audience"</span>:  <span class="str">"api://your-client-id"</span>
+  }
+}`,lang:'appsettings.json'},
+    ]
+  },
+  {
+    label:'API Keys', color:'#f472b6',
+    steps:[
+      {num:1,color:'#f472b6',title:'Custom middleware',desc:'Read and validate the API key',code:`<span class="kw">public class</span> <span class="cls">ApiKeyMiddleware</span>(RequestDelegate next)
+{
+    <span class="kw">private const string</span> ApiKeyHeader = <span class="str">"X-Api-Key"</span>;
+
+    <span class="kw">public async</span> Task <span class="fn">InvokeAsync</span>(HttpContext ctx, IApiKeyService svc)
+    {
+        <span class="kw">if</span> (!ctx.Request.Headers.<span class="fn">TryGetValue</span>(ApiKeyHeader, <span class="kw">out var</span> key))
+        { ctx.Response.StatusCode = <span class="num">401</span>; <span class="kw">return</span>; }
+
+        <span class="kw">if</span> (!<span class="kw">await</span> svc.<span class="fn">ValidateAsync</span>(key!))
+        { ctx.Response.StatusCode = <span class="num">403</span>; <span class="kw">return</span>; }
+
+        <span class="kw">await</span> next(ctx);
+    }
+}
+
+<span class="cmt">// Register: app.UseMiddleware&lt;ApiKeyMiddleware&gt;();</span>`,lang:'Middleware'},
+      {num:2,color:'#f472b6',title:'ApiKeyService',desc:'Validate against database',code:`<span class="kw">public class</span> <span class="cls">ApiKeyService</span>(AppDbContext db)
+{
+    <span class="kw">public async</span> Task&lt;<span class="kw">bool</span>&gt; <span class="fn">ValidateAsync</span>(<span class="kw">string</span> key)
+    {
+        <span class="kw">var</span> hash = Convert.<span class="fn">ToHexString</span>(
+            SHA256.<span class="fn">HashData</span>(Encoding.UTF8.<span class="fn">GetBytes</span>(key)));
+        <span class="kw">return await</span> db.ApiKeys
+            .<span class="fn">AnyAsync</span>(k => k.KeyHash == hash && k.IsActive);
+    }
+}`,lang:'Service'},
+    ]
+  },
+  {
+    label:'Google OIDC', color:'#ef4444',
+    steps:[
+      {num:1,color:'#ef4444',title:'Install package',desc:'Google auth provider',code:`<span class="ok">$</span> dotnet add package Microsoft.AspNetCore.Authentication.Google`,lang:'Terminal'},
+      {num:2,color:'#ef4444',title:'Program.cs',desc:'Add Google OIDC',code:`builder.Services.<span class="fn">AddAuthentication</span>()
+    .<span class="fn">AddGoogle</span>(options =>
+    {
+        options.ClientId     = builder.Configuration[<span class="str">"Google:ClientId"</span>]!;
+        options.ClientSecret = builder.Configuration[<span class="str">"Google:ClientSecret"</span>]!;
+
+        <span class="cmt">// Request additional scopes</span>
+        options.Scope.Add(<span class="str">"profile"</span>);
+        options.Scope.Add(<span class="str">"email"</span>);
+    });`,lang:'Program.cs'},
+    ]
+  },
+];
+
+function renderSetup(){
+  const nav=document.getElementById('setup-nav');
+  const panels=document.getElementById('setup-panels');
+  nav.innerHTML=SETUP_PANELS.map((p,i)=>`<button class="setup-nav-btn ${i===0?'active':''}" style="${i===0?'background:'+p.color+';color:#fff;border-color:transparent':''}" onclick="switchSetup(${i},this)">${p.label}</button>`).join('');
+  panels.innerHTML=SETUP_PANELS.map((p,i)=>`
+    <div class="setup-panel ${i===0?'active':''}" id="setup-panel-${i}">
+      ${p.steps.map(s=>`
+        <div class="setup-step">
+          <div class="setup-step-hdr">
+            <div class="setup-num" style="background:${s.color}18;color:${s.color}">${s.num}</div>
+            <div><div class="setup-step-title">${s.title}</div><div class="setup-step-desc">${s.desc}</div></div>
+          </div>
+          <div class="setup-step-body"><div class="code-box" data-label="${s.lang}">${s.code}</div></div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+function switchSetup(i,btn){
+  document.querySelectorAll('.setup-nav-btn').forEach(b=>{b.classList.remove('active');b.style.background='';b.style.color='';b.style.borderColor='';});
+  document.querySelectorAll('.setup-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+  btn.classList.add('active');btn.style.background=SETUP_PANELS[i].color;btn.style.color='#fff';btn.style.borderColor='transparent';
+}
+renderSetup();
+</script>
+</body>
+</html>

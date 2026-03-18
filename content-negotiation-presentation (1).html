@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content Negotiation — .NET Core Web API</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;
+  --s1:#0d1117;
+  --s2:#161b22;
+  --s3:#1c2230;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.13);
+  --text:#e6edf3;
+  --muted:#7d8590;
+  --faint:#2d333b;
+  --accent:#6366f1;
+  --green:#10b981;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --blue:#60a5fa;
+  --pink:#f472b6;
+  --teal:#2dd4bf;
+}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  padding:0;
+  overflow-x:hidden;
+  background-image:
+    radial-gradient(ellipse at 10% 30%,rgba(99,102,241,.07) 0%,transparent 55%),
+    radial-gradient(ellipse at 90% 70%,rgba(45,212,191,.04) 0%,transparent 50%);
+}
+
+/* ── TABS ── */
+.tabs-bar{
+  display:flex;align-items:center;gap:0;
+  background:var(--s1);
+  border-bottom:1px solid var(--border);
+  padding:0 32px;
+  overflow-x:auto;
+}
+.tab-btn{
+  padding:16px 22px;
+  font-size:13px;font-weight:500;
+  color:var(--muted);
+  border:none;background:none;cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .2s;
+  white-space:nowrap;
+  font-family:'Inter',sans-serif;
+}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent);}
+
+.tab-content{display:none;padding:40px 32px 60px;}
+.tab-content.active{display:block;animation:fadeUp .3s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── HERO (tab 0) ── */
+.hero{text-align:center;max-width:760px;margin:0 auto 48px;}
+.hero .badge{
+  display:inline-block;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;letter-spacing:.18em;
+  color:var(--accent);
+  padding:5px 16px;
+  border:1px solid rgba(99,102,241,.3);
+  border-radius:20px;margin-bottom:18px;
+}
+.hero h1{font-size:clamp(28px,5vw,52px);font-weight:700;letter-spacing:-1.5px;line-height:1.05;margin-bottom:16px;}
+.hero h1 em{font-style:normal;color:var(--accent);}
+.hero p{font-size:16px;color:var(--muted);line-height:1.7;max-width:560px;margin:0 auto;}
+
+/* ── CONCEPT CARDS ── */
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;max-width:1000px;margin:0 auto;}
+.concept-card{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:16px;padding:24px;
+  transition:border-color .2s,transform .2s;
+}
+.concept-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.concept-card .icon{font-size:28px;margin-bottom:14px;}
+.concept-card h3{font-size:15px;font-weight:600;margin-bottom:8px;}
+.concept-card p{font-size:13px;color:var(--muted);line-height:1.65;}
+.concept-card .tag{
+  display:inline-block;margin-top:12px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:3px 10px;border-radius:6px;
+}
+
+/* ── SECTION TITLE ── */
+.section-title{
+  font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-.5px;
+}
+.section-sub{font-size:14px;color:var(--muted);margin-bottom:32px;}
+
+/* ── FLOW DEMO (tab 1) ── */
+.flow-wrap{max-width:980px;margin:0 auto;}
+.flow-steps-bar{
+  display:flex;align-items:center;justify-content:center;
+  gap:0;margin-bottom:36px;flex-wrap:wrap;
+}
+.flow-dot{display:flex;align-items:center;}
+.flow-circle{
+  width:38px;height:38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;
+  border:1.5px solid var(--faint);
+  background:var(--s1);color:var(--muted);
+  cursor:pointer;transition:all .25s;
+}
+.flow-circle.done{border-color:var(--teal);color:var(--teal);background:rgba(45,212,191,.07);}
+.flow-circle.active{color:#fff;border-color:transparent;box-shadow:0 0 0 3px rgba(99,102,241,.35);}
+.flow-line{width:44px;height:1.5px;background:var(--faint);transition:background .3s;}
+.flow-line.done{background:var(--teal);}
+
+.flow-arena{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:20px;overflow:hidden;margin-bottom:20px;
+}
+.arena-row{
+  display:grid;grid-template-columns:1fr 100px 1fr;
+  border-bottom:1px solid var(--border);
+  min-height:180px;
+}
+.arena-actor{
+  padding:28px 24px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;text-align:center;transition:background .4s;
+}
+.arena-icon{font-size:36px;}
+.arena-label{font-size:13px;font-weight:600;}
+.arena-sub{font-size:11px;color:var(--muted);}
+.arena-badge{
+  margin-top:6px;padding:5px 14px;border-radius:20px;
+  font-size:11px;font-weight:500;
+  font-family:'JetBrains Mono',monospace;
+  opacity:0;transform:translateY(4px);transition:all .35s;
+}
+.arena-badge.show{opacity:1;transform:translateY(0);}
+.wire-col{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  position:relative;padding:12px 4px;
+}
+#cneg-svg{width:100%;overflow:visible;}
+
+.flow-detail{
+  display:grid;grid-template-columns:1fr 1fr;gap:24px;
+  padding:28px 32px;
+  animation:fadeUp .3s ease both;
+}
+.detail-left{}
+.step-meta{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.step-bubble{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;flex-shrink:0;
+  font-family:'JetBrains Mono',monospace;
+}
+.step-main-title{font-size:17px;font-weight:600;}
+.step-main-sub{font-size:12px;margin-top:3px;font-family:'JetBrains Mono',monospace;}
+.step-main-desc{font-size:13px;color:var(--muted);line-height:1.75;margin-top:12px;}
+
+.code-box{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:12px;padding:16px 18px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;line-height:1.9;color:var(--muted);
+  position:relative;overflow:hidden;
+}
+.code-box::before{
+  content:attr(data-label);
+  position:absolute;top:10px;right:14px;
+  font-size:10px;letter-spacing:.1em;
+  color:var(--faint);text-transform:uppercase;
+}
+.kw{color:#79c0ff}.fn{color:#d2a8ff}.str{color:#a5d6ff}
+.cmt{color:#3d444d}.num{color:var(--amber)}.cls{color:#ffa657}
+.ok{color:var(--green)}.err{color:var(--red)}.hl{color:var(--text)}
+.hdr{color:var(--pink)}.mime{color:var(--teal)}
+
+/* Header display box */
+.header-display{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:12px;padding:16px 18px;
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  margin-bottom:16px;
+}
+.hdr-row{display:flex;align-items:baseline;gap:10px;padding:4px 0;border-bottom:1px solid var(--faint);}
+.hdr-row:last-child{border-bottom:none;}
+.hdr-key{color:var(--pink);min-width:180px;flex-shrink:0;}
+.hdr-val{color:var(--teal);word-break:break-all;}
+.hdr-note{color:var(--faint);font-size:11px;margin-left:auto;flex-shrink:0;}
+
+/* Format result */
+.format-result{
+  border-radius:12px;padding:16px 18px;
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  line-height:1.8;margin-top:16px;
+  border:1px solid var(--border);
+  position:relative;
+}
+.format-badge{
+  position:absolute;top:-10px;left:16px;
+  font-size:11px;font-weight:600;padding:2px 10px;
+  border-radius:6px;
+}
+
+/* ── FORMATS COMPARISON (tab 2) ── */
+.formats-wrap{max-width:980px;margin:0 auto;}
+.format-selector{
+  display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;
+}
+.fmt-btn{
+  padding:10px 20px;border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--s1);color:var(--muted);
+  font-family:'JetBrains Mono',monospace;font-size:13px;
+  cursor:pointer;transition:all .2s;font-weight:500;
+}
+.fmt-btn:hover{border-color:var(--border2);color:var(--text);}
+.fmt-btn.active{color:#fff;border-color:transparent;}
+.formats-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.fmt-panel{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+}
+.fmt-header{
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.fmt-dot{width:10px;height:10px;border-radius:50%;}
+.fmt-title{font-size:13px;font-weight:600;}
+.fmt-mime{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.fmt-body{padding:16px 18px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;color:var(--muted);}
+.fmt-body .key{color:var(--pink);}
+.fmt-body .val{color:var(--teal);}
+.fmt-body .tag{color:var(--accent);}
+.fmt-body .attr{color:var(--amber);}
+.fmt-body .cmt2{color:var(--faint);}
+
+.format-info-cards{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;margin-top:20px;
+}
+.fmt-info-card{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:12px;padding:16px;
+}
+.fmt-info-card h4{font-size:13px;font-weight:600;margin-bottom:8px;}
+.fmt-info-card ul{list-style:none;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:5px;}
+.fmt-info-card li::before{content:"→ ";color:var(--accent);}
+
+/* ── LIVE DEMO (tab 3) ── */
+.demo-wrap{max-width:980px;margin:0 auto;}
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.demo-panel{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+}
+.demo-panel-header{
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:600;
+}
+.demo-panel-body{padding:20px;}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500;}
+select,input[type=text]{
+  width:100%;padding:9px 12px;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  outline:none;transition:border-color .2s;margin-bottom:14px;
+}
+select:focus,input[type=text]:focus{border-color:var(--accent);}
+.demo-run-btn{
+  width:100%;padding:11px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:10px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;
+  cursor:pointer;transition:background .2s,box-shadow .2s;
+  box-shadow:0 0 20px rgba(99,102,241,.3);
+}
+.demo-run-btn:hover{background:#7577f3;box-shadow:0 0 30px rgba(99,102,241,.5);}
+.demo-output{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  line-height:1.8;color:var(--muted);
+  min-height:200px;padding:16px;
+  background:var(--s2);border-radius:10px;
+  white-space:pre-wrap;word-break:break-all;
+}
+.output-header-line{color:var(--pink);}
+.output-val{color:var(--teal);}
+.output-key{color:var(--amber);}
+.output-tag{color:var(--accent);}
+.output-status{
+  display:inline-block;padding:2px 10px;border-radius:6px;
+  font-size:11px;font-weight:600;margin-bottom:10px;
+}
+.status-200{background:rgba(16,185,129,.15);color:var(--green);}
+.status-406{background:rgba(239,68,68,.15);color:var(--red);}
+
+/* ── CODE SETUP (tab 4) ── */
+.setup-wrap{max-width:980px;margin:0 auto;}
+.setup-steps{display:flex;flex-direction:column;gap:24px;}
+.setup-step{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+}
+.setup-step-header{
+  padding:16px 22px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:14px;
+}
+.setup-step-num{
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;
+  flex-shrink:0;
+}
+.setup-step-title{font-size:15px;font-weight:600;}
+.setup-step-desc{font-size:13px;color:var(--muted);}
+.setup-step-body{padding:20px 22px;}
+.setup-step-body .code-box{margin-bottom:0;}
+
+/* ── CONTROLS ── */
+.flow-controls{
+  display:flex;gap:12px;justify-content:center;margin-top:4px;flex-wrap:wrap;
+}
+.ctrl-btn{
+  padding:10px 22px;border-radius:10px;
+  border:1px solid var(--border2);
+  background:var(--s2);color:var(--muted);
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  cursor:pointer;transition:all .2s;
+}
+.ctrl-btn:hover{background:var(--s3);color:var(--text);}
+.ctrl-btn.primary{
+  background:var(--accent);color:#fff;
+  border-color:transparent;font-weight:600;
+  box-shadow:0 0 20px rgba(99,102,241,.28);
+}
+.ctrl-btn.primary:hover{background:#7577f3;}
+
+/* ── KEY HINT ── */
+.keyhint{
+  text-align:center;margin-top:16px;
+  font-size:11px;color:var(--faint);
+  font-family:'JetBrains Mono',monospace;
+}
+.keyhint kbd{
+  display:inline-block;padding:2px 7px;
+  border:1px solid var(--faint);border-radius:5px;
+  font-family:inherit;font-size:10px;
+}
+
+@media(max-width:700px){
+  .arena-row,.flow-detail,.formats-grid,.demo-grid{grid-template-columns:1fr;}
+  .tab-content{padding:24px 16px 48px;}
+  .tabs-bar{padding:0 16px;}
+}
+</style>
+</head>
+<body>
+
+<!-- Tab bar -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab(0)">① What is it?</button>
+  <button class="tab-btn" onclick="switchTab(1)">② Flow Walkthrough</button>
+  <button class="tab-btn" onclick="switchTab(2)">③ Formats Side-by-Side</button>
+  <button class="tab-btn" onclick="switchTab(3)">④ Live Simulator</button>
+  <button class="tab-btn" onclick="switchTab(4)">⑤ .NET Core Setup</button>
+</div>
+
+<!-- ══════════════ TAB 0 — WHAT IS IT ══════════════ -->
+<div class="tab-content active" id="tab-0">
+  <div class="hero">
+    <div class="badge">.NET Core Web API</div>
+    <h1>Content <em>Negotiation</em></h1>
+    <p>The HTTP mechanism that lets the <strong>same endpoint</strong> return JSON, XML, CSV or any format — based on what the client asks for. Zero extra code per format.</p>
+  </div>
+
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="icon">🤝</div>
+      <h3>The Handshake</h3>
+      <p>The client tells the server "I can understand these formats" via the <code style="color:var(--pink);font-family:'JetBrains Mono',monospace">Accept</code> header. The server picks the best match it supports and responds accordingly.</p>
+      <span class="tag" style="background:rgba(99,102,241,.1);color:var(--accent)">RFC 7231 §5.3</span>
+    </div>
+    <div class="concept-card">
+      <div class="icon">📨</div>
+      <h3>Accept Header</h3>
+      <p>Client sends: <br><code style="color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:11px">Accept: application/json, application/xml;q=0.8, */*;q=0.5</code><br>The <code style="color:var(--amber);font-family:'JetBrains Mono',monospace">q</code> value is the quality factor — priority 0 to 1.</p>
+      <span class="tag" style="background:rgba(45,212,191,.1);color:var(--teal)">Request header</span>
+    </div>
+    <div class="concept-card">
+      <div class="icon">📤</div>
+      <h3>Content-Type Header</h3>
+      <p>Server responds with the actual format it chose:<br><code style="color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:11px">Content-Type: application/json; charset=utf-8</code></p>
+      <span class="tag" style="background:rgba(244,114,182,.1);color:var(--pink)">Response header</span>
+    </div>
+    <div class="concept-card">
+      <div class="icon">⚡</div>
+      <h3>Why it matters</h3>
+      <p>One <code style="color:var(--blue);font-family:'JetBrains Mono',monospace">/api/products</code> endpoint serves a React app (JSON), a legacy Java system (XML), and an Excel export (CSV) — without duplication.</p>
+      <span class="tag" style="background:rgba(96,165,250,.1);color:var(--blue)">Single endpoint</span>
+    </div>
+    <div class="concept-card">
+      <div class="icon">🚫</div>
+      <h3>406 Not Acceptable</h3>
+      <p>If the server can't produce any of the client's requested formats, it returns HTTP <code style="color:var(--red);font-family:'JetBrains Mono',monospace">406 Not Acceptable</code> — the content negotiation failed.</p>
+      <span class="tag" style="background:rgba(239,68,68,.1);color:var(--red)">HTTP 406</span>
+    </div>
+    <div class="concept-card">
+      <div class="icon">🔧</div>
+      <h3>In .NET Core</h3>
+      <p>ASP.NET Core has built-in content negotiation. Just register formatters in <code style="color:var(--amber);font-family:'JetBrains Mono',monospace">Program.cs</code> and return <code style="color:var(--green);font-family:'JetBrains Mono',monospace">Ok(data)</code> — the framework handles the rest.</p>
+      <span class="tag" style="background:rgba(245,158,11,.1);color:var(--amber)">Zero boilerplate</span>
+    </div>
+  </div>
+
+  <div style="max-width:760px;margin:40px auto 0;background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:24px 28px;">
+    <div style="font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text)">The Real-world Analogy</div>
+    <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:16px;align-items:center;">
+      <div style="background:var(--s2);border-radius:12px;padding:16px;font-size:13px;color:var(--muted);line-height:1.65;">
+        <div style="font-size:20px;margin-bottom:10px;">🙋</div>
+        <strong style="color:var(--text);">You (Client)</strong><br>
+        Walk into a restaurant and say: <em style="color:var(--teal)">"I'd prefer Italian, but I'll take Indian if you don't have it. Anything but Thai."</em>
+      </div>
+      <div style="text-align:center;font-size:24px;color:var(--accent)">⇄</div>
+      <div style="background:var(--s2);border-radius:12px;padding:16px;font-size:13px;color:var(--muted);line-height:1.65;">
+        <div style="font-size:20px;margin-bottom:10px;">👨‍🍳</div>
+        <strong style="color:var(--text);">Restaurant (Server)</strong><br>
+        Checks the menu, serves Italian because they have it. Tells you <em style="color:var(--pink)">"Content-Type: Italian cuisine"</em> so you know what you're getting.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 1 — FLOW WALKTHROUGH ══════════════ -->
+<div class="tab-content" id="tab-1">
+  <div class="flow-wrap">
+    <div class="section-title">Request → Negotiation → Response</div>
+    <div class="section-sub">Step through how .NET Core processes a content negotiation request</div>
+
+    <div class="flow-steps-bar" id="flow-progress"></div>
+
+    <div class="flow-arena">
+      <div class="arena-row">
+        <!-- Client -->
+        <div class="arena-actor" id="fl-client">
+          <div class="arena-icon">💻</div>
+          <div class="arena-label">Client</div>
+          <div class="arena-sub">Postman / Browser / App</div>
+          <div class="arena-badge" id="fl-badge-c"></div>
+        </div>
+        <!-- Wire -->
+        <div class="wire-col">
+          <svg id="cneg-svg" height="120" viewBox="0 0 100 120">
+            <defs>
+              <marker id="farr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </marker>
+            </defs>
+            <line x1="50" y1="0" x2="50" y2="120" stroke="#1c2230" stroke-width="1.5"/>
+            <circle id="fl-pkt" cx="50" cy="-20" r="7" fill="var(--accent)" opacity="0"/>
+            <text id="fl-wire-lbl" x="50" y="60" text-anchor="middle" font-size="9" font-family="JetBrains Mono,monospace" fill="#3d444d"></text>
+          </svg>
+        </div>
+        <!-- Server -->
+        <div class="arena-actor" id="fl-server">
+          <div class="arena-icon">🖥️</div>
+          <div class="arena-label">ASP.NET Core</div>
+          <div class="arena-sub">.NET Core Web API</div>
+          <div class="arena-badge" id="fl-badge-s"></div>
+        </div>
+      </div>
+
+      <div class="flow-detail" id="flow-detail">
+        <div class="detail-left">
+          <div class="step-meta">
+            <div class="step-bubble" id="fl-num">1</div>
+            <div>
+              <div class="step-main-title" id="fl-title"></div>
+              <div class="step-main-sub" id="fl-sub"></div>
+            </div>
+          </div>
+          <div class="step-main-desc" id="fl-desc"></div>
+          <!-- Headers display -->
+          <div id="fl-headers" style="margin-top:14px;display:none;"></div>
+        </div>
+        <div class="code-box" data-label="C#" id="fl-code"></div>
+      </div>
+    </div>
+
+    <div class="flow-controls">
+      <button class="ctrl-btn" onclick="flReset()">↺ Reset</button>
+      <button class="ctrl-btn" onclick="flToggleAuto()" id="fl-auto-btn">▶ Auto</button>
+      <button class="ctrl-btn primary" onclick="flAdvance()" id="fl-next-btn">Next →</button>
+    </div>
+    <div class="keyhint"><kbd>→</kbd> next &nbsp;|&nbsp; <kbd>←</kbd> back &nbsp;|&nbsp; <kbd>Space</kbd> auto</div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 2 — FORMATS SIDE BY SIDE ══════════════ -->
+<div class="tab-content" id="tab-2">
+  <div class="formats-wrap">
+    <div class="section-title">Same Data, Different Formats</div>
+    <div class="section-sub">One <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">GET /api/products/1</code> endpoint — different <code style="font-family:'JetBrains Mono',monospace;color:var(--pink)">Accept</code> headers, different responses</div>
+
+    <div class="format-selector">
+      <button class="fmt-btn active" style="background:rgba(99,102,241,.15);color:var(--accent);border-color:var(--accent)" onclick="setFmt(0,this)">JSON + XML</button>
+      <button class="fmt-btn" onclick="setFmt(1,this)">JSON + CSV</button>
+      <button class="fmt-btn" onclick="setFmt(2,this)">XML + CSV</button>
+      <button class="fmt-btn" onclick="setFmt(3,this)">All Three</button>
+    </div>
+
+    <div class="formats-grid" id="fmt-grid"></div>
+
+    <div class="format-info-cards">
+      <div class="fmt-info-card">
+        <h4 style="color:var(--blue)">application/json</h4>
+        <ul>
+          <li>Default in .NET Core</li>
+          <li>Most web frontends</li>
+          <li>Compact & readable</li>
+          <li>Built-in via System.Text.Json</li>
+        </ul>
+      </div>
+      <div class="fmt-info-card">
+        <h4 style="color:var(--pink)">application/xml</h4>
+        <ul>
+          <li>Legacy enterprise systems</li>
+          <li>SOAP integrations</li>
+          <li>Add Newtonsoft XML package</li>
+          <li>Verbose but self-describing</li>
+        </ul>
+      </div>
+      <div class="fmt-info-card">
+        <h4 style="color:var(--amber)">text/csv</h4>
+        <ul>
+          <li>Excel / spreadsheet exports</li>
+          <li>Data pipeline ingestion</li>
+          <li>Custom formatter needed</li>
+          <li>Lightest payload size</li>
+        </ul>
+      </div>
+      <div class="fmt-info-card">
+        <h4 style="color:var(--green)">406 Not Acceptable</h4>
+        <ul>
+          <li>No matching formatter found</li>
+          <li>Client asked for unsupported type</li>
+          <li>RespectBrowserAcceptHeader flag</li>
+          <li>Fallback: default formatter</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 3 — LIVE SIMULATOR ══════════════ -->
+<div class="tab-content" id="tab-3">
+  <div class="demo-wrap">
+    <div class="section-title">Live Simulator</div>
+    <div class="section-sub">Simulate what happens when you change the Accept header — see the exact server decision and response</div>
+
+    <div class="demo-grid">
+      <div class="demo-panel">
+        <div class="demo-panel-header">
+          <span style="font-size:16px">📨</span> Build Your Request
+        </div>
+        <div class="demo-panel-body">
+          <label>HTTP Method & Endpoint</label>
+          <input type="text" value="GET  /api/products/1" readonly style="color:var(--muted)">
+
+          <label>Accept Header (what the client wants)</label>
+          <select id="sim-accept">
+            <option value="application/json">application/json</option>
+            <option value="application/xml">application/xml</option>
+            <option value="text/csv">text/csv</option>
+            <option value="application/json, application/xml;q=0.9">application/json, application/xml;q=0.9</option>
+            <option value="application/xml;q=0.8, application/json;q=0.9">XML preferred (q=0.8) then JSON (q=0.9)</option>
+            <option value="*/*">*/* (accept anything)</option>
+            <option value="text/html">text/html (unsupported)</option>
+            <option value="application/pdf">application/pdf (unsupported)</option>
+          </select>
+
+          <label>Registered Formatters (server supports)</label>
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">
+                <input type="checkbox" id="fmt-json" checked style="accent-color:var(--accent);width:14px;height:14px"> application/json
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">
+                <input type="checkbox" id="fmt-xml" checked style="accent-color:var(--accent);width:14px;height:14px"> application/xml
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">
+                <input type="checkbox" id="fmt-csv" style="accent-color:var(--accent);width:14px;height:14px"> text/csv
+              </label>
+            </div>
+          </div>
+
+          <button class="demo-run-btn" onclick="runSim()">▶  Send Request</button>
+        </div>
+      </div>
+
+      <div class="demo-panel">
+        <div class="demo-panel-header" id="sim-response-title">
+          <span style="font-size:16px">📤</span> Server Response
+        </div>
+        <div class="demo-panel-body">
+          <div class="demo-output" id="sim-output">
+            <span style="color:var(--faint)">// Hit "Send Request" to simulate content negotiation...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision trace -->
+    <div style="display:none;margin-top:24px;background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;" id="decision-box">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;">
+        <span>🧠</span> ASP.NET Core Negotiation Decision Trace
+      </div>
+      <div style="padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;" id="decision-trace">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 4 — .NET CORE SETUP ══════════════ -->
+<div class="tab-content" id="tab-4">
+  <div class="setup-wrap">
+    <div class="section-title">.NET Core Setup — Step by Step</div>
+    <div class="section-sub">Everything you need to enable content negotiation in your Web API project</div>
+
+    <div class="setup-steps">
+
+      <div class="setup-step">
+        <div class="setup-step-header">
+          <div class="setup-step-num" style="background:rgba(99,102,241,.15);color:var(--accent)">1</div>
+          <div>
+            <div class="setup-step-title">Register formatters in Program.cs</div>
+            <div class="setup-step-desc">JSON is built-in. Add XML via AddXmlSerializerFormatters(). CSV needs a custom formatter.</div>
+          </div>
+        </div>
+        <div class="setup-step-body">
+          <div class="code-box" data-label="Program.cs">
+<span class="kw">var</span> builder = WebApplication.<span class="fn">CreateBuilder</span>(args);
+
+builder.Services.<span class="fn">AddControllers</span>(options =>
+{
+    <span class="cmt">// Return 406 if no formatter matches (recommended)</span>
+    options.ReturnHttpNotAcceptable = <span class="kw">true</span>;
+
+    <span class="cmt">// Respect the browser's Accept header</span>
+    options.RespectBrowserAcceptHeader = <span class="kw">true</span>;
+})
+.<span class="fn">AddXmlSerializerFormatters</span>()  <span class="cmt">// adds application/xml</span>
+.<span class="fn">AddXmlDataContractSerializerFormatters</span>(); <span class="cmt">// optional: DataContract XML</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header">
+          <div class="setup-step-num" style="background:rgba(245,158,11,.15);color:var(--amber)">2</div>
+          <div>
+            <div class="setup-step-title">Install NuGet package for XML</div>
+            <div class="setup-step-desc">The XML formatter is in a separate package. JSON works out of the box.</div>
+          </div>
+        </div>
+        <div class="setup-step-body">
+          <div class="code-box" data-label="Terminal">
+<span class="ok">$</span> dotnet add package Microsoft.AspNetCore.Mvc.Formatters.Xml
+
+<span class="cmt"># Or via Package Manager Console:</span>
+<span class="ok">PM></span> Install-Package Microsoft.AspNetCore.Mvc.Formatters.Xml
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header">
+          <div class="setup-step-num" style="background:rgba(16,185,129,.15);color:var(--green)">3</div>
+          <div>
+            <div class="setup-step-title">Create your API controller — no format code needed!</div>
+            <div class="setup-step-desc">Return Ok(data) and .NET Core handles the rest based on the Accept header.</div>
+          </div>
+        </div>
+        <div class="setup-step-body">
+          <div class="code-box" data-label="ProductsController.cs">
+<span class="kw">[ApiController]</span>
+<span class="kw">[Route(<span class="str">"api/[controller]"</span>)]</span>
+<span class="kw">public class</span> <span class="cls">ProductsController</span> : ControllerBase
+{
+    <span class="kw">[HttpGet(<span class="str">"{id}"</span>)]</span>
+    <span class="kw">public</span> IActionResult <span class="fn">GetProduct</span>(<span class="kw">int</span> id)
+    {
+        <span class="kw">var</span> product = <span class="kw">new</span> <span class="cls">Product</span>
+        {
+            Id = id,
+            Name = <span class="str">"Mechanical Keyboard"</span>,
+            Price = <span class="num">129.99m</span>,
+            InStock = <span class="kw">true</span>
+        };
+
+        <span class="cmt">// ASP.NET Core picks JSON or XML automatically</span>
+        <span class="cmt">// based on the client's Accept header!</span>
+        <span class="kw">return</span> <span class="ok">Ok</span>(product);
+    }
+}
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header">
+          <div class="setup-step-num" style="background:rgba(244,114,182,.15);color:var(--pink)">4</div>
+          <div>
+            <div class="setup-step-title">Custom CSV formatter (bonus)</div>
+            <div class="setup-step-desc">For unsupported formats, implement OutputFormatter. Here's a minimal CSV example.</div>
+          </div>
+        </div>
+        <div class="setup-step-body">
+          <div class="code-box" data-label="CsvOutputFormatter.cs">
+<span class="kw">public class</span> <span class="cls">CsvOutputFormatter</span> : TextOutputFormatter
+{
+    <span class="kw">public</span> <span class="fn">CsvOutputFormatter</span>()
+    {
+        SupportedMediaTypes.Add(<span class="str">"text/csv"</span>);
+        SupportedEncodings.Add(Encoding.UTF8);
+    }
+
+    <span class="kw">protected override bool</span> <span class="fn">CanWriteType</span>(Type? type)
+        => <span class="kw">typeof</span>(<span class="cls">Product</span>).<span class="fn">IsAssignableFrom</span>(type);
+
+    <span class="kw">public override async</span> Task <span class="fn">WriteResponseBodyAsync</span>(
+        OutputFormatterWriteContext context,
+        Encoding selectedEncoding)
+    {
+        <span class="kw">var</span> product = (<span class="cls">Product</span>)context.Object!;
+        <span class="kw">var</span> csv = <span class="str">$"Id,Name,Price,InStock\n{product.Id},{product.Name},{product.Price},{product.InStock}"</span>;
+        <span class="kw">await</span> context.HttpContext.Response.<span class="fn">WriteAsync</span>(csv, selectedEncoding);
+    }
+}
+
+<span class="cmt">// Register in Program.cs:</span>
+options.OutputFormatters.Insert(<span class="num">0</span>, <span class="kw">new</span> <span class="cls">CsvOutputFormatter</span>());
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header">
+          <div class="setup-step-num" style="background:rgba(96,165,250,.15);color:var(--blue)">5</div>
+          <div>
+            <div class="setup-step-title">Test with curl or Postman</div>
+            <div class="setup-step-desc">Change the Accept header to get different formats from the same endpoint.</div>
+          </div>
+        </div>
+        <div class="setup-step-body">
+          <div class="code-box" data-label="curl">
+<span class="cmt"># Request JSON (default)</span>
+<span class="ok">$</span> curl -H <span class="str">"Accept: application/json"</span> https://localhost:5001/api/products/1
+
+<span class="cmt"># Request XML</span>
+<span class="ok">$</span> curl -H <span class="str">"Accept: application/xml"</span> https://localhost:5001/api/products/1
+
+<span class="cmt"># Request CSV</span>
+<span class="ok">$</span> curl -H <span class="str">"Accept: text/csv"</span> https://localhost:5001/api/products/1
+
+<span class="cmt"># Trigger 406 (unsupported format)</span>
+<span class="ok">$</span> curl -H <span class="str">"Accept: application/pdf"</span> https://localhost:5001/api/products/1
+<span class="err"># → HTTP 406 Not Acceptable</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// TAB SWITCHING
+// ─────────────────────────────────────────
+function switchTab(i) {
+  document.querySelectorAll('.tab-content').forEach((t,j)=>{
+    t.classList.toggle('active', j===i);
+  });
+  document.querySelectorAll('.tab-btn').forEach((b,j)=>{
+    b.classList.toggle('active', j===i);
+  });
+  if (i===2) renderFormats(0);
+}
+
+// ─────────────────────────────────────────
+// TAB 1 — FLOW WALKTHROUGH
+// ─────────────────────────────────────────
+const FL_STEPS = [
+  {
+    title:"Client builds the request",
+    sub:"☕ You walk in and say what you want",
+    desc:"The client (Postman, browser, mobile app) sets the Accept header listing media types it understands, ordered by preference using q (quality) values. q=1.0 is highest priority.",
+    clientBadge:"Building request…", serverBadge:null,
+    dir:"down", color:"#f59e0b", clientActive:true, serverActive:false,
+    headers:[
+      {key:"GET /api/products/1 HTTP/1.1", val:"", note:""},
+      {key:"Accept:", val:"application/json, application/xml;q=0.8, */*;q=0.5", note:"priority order"},
+      {key:"Host:", val:"localhost:5001", note:""},
+    ],
+    code:`<span class="cmt">// Client-side (e.g. Axios)</span>
+axios.<span class="fn">get</span>(<span class="str">'/api/products/1'</span>, {
+  headers: {
+    <span class="str">'Accept'</span>:
+      <span class="str">'application/json, '</span>+
+      <span class="str">'application/xml;q=0.8, '</span>+
+      <span class="str">'*/*;q=0.5'</span>
+  }
+});`
+  },
+  {
+    title:"Request hits the middleware pipeline",
+    sub:"☕ Waiter receives your order slip",
+    desc:"ASP.NET Core's middleware intercepts the request. The MVC layer reads the Accept header and passes it to the OutputFormatterSelector — the engine that picks the best formatter.",
+    clientBadge:null, serverBadge:"Reading Accept…",
+    dir:null, color:"#60a5fa", clientActive:false, serverActive:true,
+    headers:[
+      {key:"Middleware pipeline:", val:"", note:""},
+      {key:"→ Routing", val:"matched ProductsController.GetProduct(1)", note:""},
+      {key:"→ Model binding", val:"id = 1", note:""},
+      {key:"→ Action executed", val:"returns Ok(product)", note:""},
+      {key:"→ OutputFormatterSelector", val:"reading Accept header…", note:"next"},
+    ],
+    code:`<span class="cmt">// Program.cs — pipeline order</span>
+app.<span class="fn">UseRouting</span>();
+app.<span class="fn">UseAuthentication</span>();
+app.<span class="fn">UseAuthorization</span>();
+app.<span class="fn">MapControllers</span>();
+<span class="cmt">// Content negotiation happens
+// inside MapControllers ↑</span>`
+  },
+  {
+    title:"OutputFormatterSelector scores the formatters",
+    sub:"☕ Kitchen checks what dishes it can make",
+    desc:"The selector iterates through registered formatters, matches each against the client's Accept header using q-values. The highest-scoring match wins. If nothing matches and ReturnHttpNotAcceptable=true, it returns 406.",
+    clientBadge:null, serverBadge:"Scoring formatters…",
+    dir:null, color:"#a78bfa", clientActive:false, serverActive:true,
+    headers:[
+      {key:"Registered formatters:", val:"", note:""},
+      {key:"① SystemTextJsonOutputFormatter", val:"supports application/json", note:"q=1.0 ✓ winner"},
+      {key:"② XmlSerializerOutputFormatter", val:"supports application/xml", note:"q=0.8"},
+      {key:"③ CsvOutputFormatter", val:"supports text/csv", note:"not in Accept"},
+    ],
+    code:`<span class="cmt">// Program.cs</span>
+builder.Services.<span class="fn">AddControllers</span>(o => {
+  o.ReturnHttpNotAcceptable = <span class="kw">true</span>;
+})
+.<span class="fn">AddXmlSerializerFormatters</span>();
+
+<span class="cmt">// ASP.NET iterates formatters,
+// picks highest q-value match</span>`
+  },
+  {
+    title:"Formatter serializes the response",
+    sub:"☕ Chef plates the dish in your preferred style",
+    desc:"The winning formatter (JSON in this case) serializes the Product object to the response stream. The Content-Type header is set to tell the client exactly what format is coming.",
+    clientBadge:null, serverBadge:"Serializing → JSON",
+    dir:null, color:"#10b981", clientActive:false, serverActive:true,
+    headers:[
+      {key:"Response headers being set:", val:"", note:""},
+      {key:"HTTP/1.1", val:"200 OK", note:""},
+      {key:"Content-Type:", val:"application/json; charset=utf-8", note:"← chosen format"},
+      {key:"Content-Length:", val:"74", note:"bytes"},
+    ],
+    code:`<span class="cmt">// Your controller — no format code!</span>
+<span class="kw">[HttpGet(<span class="str">"{id}"</span>)]</span>
+<span class="kw">public</span> IActionResult <span class="fn">GetProduct</span>(<span class="kw">int</span> id)
+{
+  <span class="kw">var</span> p = _repo.<span class="fn">Find</span>(id);
+  <span class="kw">return</span> <span class="ok">Ok</span>(p); <span class="cmt">// ← that's it!</span>
+}`
+  },
+  {
+    title:"Client receives the response",
+    sub:"☕ Your meal arrives exactly as ordered",
+    desc:"The client receives the response with the Content-Type header confirming the format. The JSON body contains the product data. If the client had asked for XML, the same endpoint would have returned XML.",
+    clientBadge:"Got JSON! ✓", serverBadge:null,
+    dir:"up", color:"#10b981", clientActive:true, serverActive:false,
+    headers:[
+      {key:"HTTP/1.1 200 OK", val:"", note:""},
+      {key:"Content-Type:", val:"application/json; charset=utf-8", note:""},
+      {key:"", val:"", note:""},
+      {key:"Body:", val:'{"id":1,"name":"Keyboard","price":129.99,"inStock":true}', note:""},
+    ],
+    code:`<span class="cmt">// Client reads Content-Type header</span>
+<span class="cmt">// to know how to parse the body</span>
+
+<span class="cmt">// application/json response:</span>
+{
+  <span class="str">"id"</span>: <span class="num">1</span>,
+  <span class="str">"name"</span>: <span class="str">"Mechanical Keyboard"</span>,
+  <span class="str">"price"</span>: <span class="num">129.99</span>,
+  <span class="str">"inStock"</span>: <span class="kw">true</span>
+}`
+  }
+];
+
+let flStep=0, flAuto=false, flTimer=null, flBusy=false;
+
+function flBuildProgress(){
+  const row=document.getElementById('flow-progress');
+  row.innerHTML='';
+  FL_STEPS.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='flow-dot';
+    d.innerHTML=`<div class="flow-circle ${i<flStep?'done':''} ${i===flStep?'active':''}"
+      style="${i===flStep?'background:'+s.color+';border-color:'+s.color:''}"
+      onclick="flGoTo(${i})">${i<flStep?'✓':i+1}</div>`;
+    row.appendChild(d);
+    if(i<FL_STEPS.length-1){
+      const l=document.createElement('div');
+      l.className='flow-line'+(i<flStep?' done':'');
+      row.appendChild(l);
+    }
+  });
+}
+
+function flAnimatePkt(dir,color){
+  const pkt=document.getElementById('fl-pkt');
+  const startY=dir==='down'?-10:130;
+  const endY=dir==='down'?130:-10;
+  pkt.setAttribute('fill',color);pkt.setAttribute('cy',startY);pkt.setAttribute('opacity','1');
+  const start=performance.now(),dur=800;
+  function frame(t){
+    const p=Math.min((t-start)/dur,1);
+    const e=p<.5?2*p*p:-1+(4-2*p)*p;
+    pkt.setAttribute('cy',startY+(endY-startY)*e);
+    pkt.setAttribute('opacity',p>.8?String(1-(p-.8)/.2):'1');
+    if(p<1)requestAnimationFrame(frame);
+    else pkt.setAttribute('opacity','0');
+  }
+  requestAnimationFrame(frame);
+}
+
+function flRender(anim){
+  const s=FL_STEPS[flStep];
+  flBuildProgress();
+
+  const panel=document.getElementById('flow-detail');
+  panel.style.animation='none';void panel.offsetWidth;panel.style.animation='fadeUp .3s ease both';
+
+  document.getElementById('fl-num').textContent=flStep+1;
+  document.getElementById('fl-num').style.background=s.color;
+  document.getElementById('fl-num').style.color='#07090f';
+  document.getElementById('fl-title').textContent=s.title;
+  document.getElementById('fl-sub').textContent=s.sub;
+  document.getElementById('fl-sub').style.color=s.color;
+  document.getElementById('fl-desc').textContent=s.desc;
+  document.getElementById('fl-code').innerHTML=s.code;
+  document.getElementById('fl-wire-lbl').textContent=s.dir?'':'●';
+
+  // actors
+  const ac=document.getElementById('fl-client');
+  const as=document.getElementById('fl-server');
+  ac.style.background=s.clientActive?s.color+'12':'transparent';
+  as.style.background=s.serverActive?s.color+'12':'transparent';
+
+  const bc=document.getElementById('fl-badge-c');
+  const bs=document.getElementById('fl-badge-s');
+  if(s.clientBadge){bc.textContent=s.clientBadge;bc.style.background=s.color+'20';bc.style.color=s.color;bc.classList.add('show');}
+  else bc.classList.remove('show');
+  if(s.serverBadge){bs.textContent=s.serverBadge;bs.style.background=s.color+'20';bs.style.color=s.color;bs.classList.add('show');}
+  else bs.classList.remove('show');
+
+  if(s.dir&&anim!==false)flAnimatePkt(s.dir,s.color);
+
+  // headers
+  const hBox=document.getElementById('fl-headers');
+  if(s.headers&&s.headers.length){
+    hBox.style.display='block';
+    hBox.innerHTML=`<div class="header-display">${s.headers.map(h=>`
+      <div class="hdr-row">
+        <span class="hdr-key">${h.key}</span>
+        <span class="hdr-val">${h.val}</span>
+        ${h.note?`<span class="hdr-note">${h.note}</span>`:''}
+      </div>`).join('')}</div>`;
+  } else hBox.style.display='none';
+
+  document.getElementById('fl-next-btn').textContent=flStep===FL_STEPS.length-1?'↺ Restart':'Next →';
+}
+
+function flAdvance(){
+  if(flBusy)return;flBusy=true;
+  flStep=(flStep+1)%FL_STEPS.length;
+  flRender(true);setTimeout(()=>flBusy=false,500);
+}
+function flGoTo(i){flStep=i;flRender(false);}
+function flReset(){flStep=0;if(flAuto)flToggleAuto();flRender(false);}
+function flToggleAuto(){
+  flAuto=!flAuto;
+  document.getElementById('fl-auto-btn').textContent=flAuto?'⏸ Pause':'▶ Auto';
+  if(flAuto)flTimer=setInterval(()=>{flStep=(flStep+1)%FL_STEPS.length;flRender(true);},2800);
+  else clearInterval(flTimer);
+}
+
+flRender(false);
+
+// ─────────────────────────────────────────
+// TAB 2 — FORMATS
+// ─────────────────────────────────────────
+const FORMATS = [
+  {
+    label:'JSON', color:'#60a5fa', mime:'application/json',
+    body:`<span class="key">"id"</span>: <span class="val">1</span>,
+<span class="key">"name"</span>: <span class="val">"Mechanical Keyboard"</span>,
+<span class="key">"price"</span>: <span class="val">129.99</span>,
+<span class="key">"inStock"</span>: <span class="val">true</span>,
+<span class="key">"category"</span>: <span class="val">"Electronics"</span>`
+  },
+  {
+    label:'XML', color:'#f472b6', mime:'application/xml',
+    body:`<span class="tag">&lt;Product&gt;</span>
+  <span class="tag">&lt;Id&gt;</span><span class="val">1</span><span class="tag">&lt;/Id&gt;</span>
+  <span class="tag">&lt;Name&gt;</span><span class="val">Mechanical Keyboard</span><span class="tag">&lt;/Name&gt;</span>
+  <span class="tag">&lt;Price&gt;</span><span class="val">129.99</span><span class="tag">&lt;/Price&gt;</span>
+  <span class="tag">&lt;InStock&gt;</span><span class="val">true</span><span class="tag">&lt;/InStock&gt;</span>
+  <span class="tag">&lt;Category&gt;</span><span class="val">Electronics</span><span class="tag">&lt;/Category&gt;</span>
+<span class="tag">&lt;/Product&gt;</span>`
+  },
+  {
+    label:'CSV', color:'#f59e0b', mime:'text/csv',
+    body:`<span class="attr">Id,Name,Price,InStock,Category</span>
+<span class="val">1,Mechanical Keyboard,129.99,true,Electronics</span>
+
+<span class="cmt2"># Lightweight — perfect for Excel/data pipelines</span>
+<span class="cmt2"># Requires a custom OutputFormatter in .NET Core</span>`
+  }
+];
+
+const COMBOS = [[0,1],[0,2],[1,2],[0,1,2]];
+let fmtActive=0;
+
+function setFmt(i,btn){
+  fmtActive=i;
+  document.querySelectorAll('.fmt-btn').forEach((b,j)=>{
+    b.classList.toggle('active',j===i);
+    b.style.background=j===i?'rgba(99,102,241,.15)':'';
+    b.style.color=j===i?'var(--accent)':'';
+    b.style.borderColor=j===i?'var(--accent)':'';
+  });
+  renderFormats(i);
+}
+
+function renderFormats(i){
+  const combo=COMBOS[i];
+  const grid=document.getElementById('fmt-grid');
+  grid.style.gridTemplateColumns=combo.length===3?'repeat(3,1fr)':'1fr 1fr';
+  grid.innerHTML=combo.map(fi=>{
+    const f=FORMATS[fi];
+    return `<div class="fmt-panel">
+      <div class="fmt-header">
+        <div class="fmt-dot" style="background:${f.color}"></div>
+        <div>
+          <div class="fmt-title">${f.label}</div>
+          <div class="fmt-mime">${f.mime}</div>
+        </div>
+      </div>
+      <div class="fmt-body"><span style="color:var(--muted);font-size:10px;display:block;margin-bottom:8px;">Accept: ${f.mime}</span>${f.body}</div>
+    </div>`;
+  }).join('');
+}
+renderFormats(0);
+
+// ─────────────────────────────────────────
+// TAB 3 — SIMULATOR
+// ─────────────────────────────────────────
+function runSim(){
+  const accept=document.getElementById('sim-accept').value;
+  const hasJson=document.getElementById('fmt-json').checked;
+  const hasXml=document.getElementById('fmt-xml').checked;
+  const hasCsv=document.getElementById('fmt-csv').checked;
+
+  const supported=[];
+  if(hasJson)supported.push('application/json');
+  if(hasXml)supported.push('application/xml');
+  if(hasCsv)supported.push('text/csv');
+
+  // parse accept header
+  const types=accept.split(',').map(t=>{
+    const [mime,q]=t.trim().split(';q=');
+    return{mime:mime.trim(),q:q?parseFloat(q):1.0};
+  }).sort((a,b)=>b.q-a.q);
+
+  let chosen=null;
+  for(const t of types){
+    if(t.mime==='*/*'){chosen=supported[0]||null;break;}
+    const match=supported.find(s=>s===t.mime);
+    if(match){chosen=match;break;}
+  }
+
+  const out=document.getElementById('sim-output');
+  const trace=document.getElementById('decision-trace');
+  document.getElementById('decision-box').style.display='block';
+
+  let traceHtml=`<span style="color:var(--muted)">Accept header parsed:</span>\n`;
+  types.forEach(t=>{
+    const matched=supported.includes(t.mime);
+    const isWild=t.mime==='*/*';
+    const mimeColor = t.mime===chosen ? 'var(--green)' : (matched ? 'var(--amber)' : 'var(--faint)');
+    const statusColor = matched||isWild ? 'var(--green)' : 'var(--red)';
+    const statusText = matched ? '✓ supported' : isWild ? '✓ wildcard' : '✗ not registered';
+    traceHtml+=`  <span style="color:${mimeColor}">${t.mime}</span> <span style="color:var(--faint)">q=${t.q.toFixed(1)}</span> → <span style="color:${statusColor}">${statusText}</span>\n`;
+  });
+  traceHtml+=`\n<span style="color:var(--muted)">Registered formatters:</span>\n`;
+  supported.forEach(s=>{
+    traceHtml+=`  <span style="color:var(--blue)">${s}</span> ${s===chosen?'<span style="color:var(--green)">← SELECTED</span>':''}\n`;
+  });
+
+  if(!chosen){
+    out.innerHTML=`<span class="output-status status-406">HTTP 406 Not Acceptable</span>\n\n<span class="output-header-line">Content-Type:</span> <span class="output-val">(none)</span>\n\n<span style="color:var(--red)">No formatter found for:</span>\n<span style="color:var(--muted)">${accept}</span>\n\n<span style="color:var(--faint)">Registered formatters:</span>\n${supported.map(s=>`<span style="color:var(--faint)">  • ${s}</span>`).join('\n')}\n\n<span style="color:var(--red)">ASP.NET Core returns 406 because</span>\n<span style="color:var(--red)">ReturnHttpNotAcceptable = true</span>`;
+    traceHtml+=`\n<span style="color:var(--red)">→ No match found. Returning 406 Not Acceptable.</span>`;
+  } else if(chosen==='application/json'){
+    out.innerHTML=`<span class="output-status status-200">HTTP 200 OK</span>\n\n<span class="output-header-line">Content-Type:</span> <span class="output-val">application/json; charset=utf-8</span>\n<span class="output-header-line">Content-Length:</span> <span class="output-val">74</span>\n\n<span class="output-key">"id"</span>: <span class="output-val">1</span>,\n<span class="output-key">"name"</span>: <span class="output-val">"Mechanical Keyboard"</span>,\n<span class="output-key">"price"</span>: <span class="output-val">129.99</span>,\n<span class="output-key">"inStock"</span>: <span class="output-val">true</span>`;
+    traceHtml+=`\n<span style="color:var(--green)">→ SystemTextJsonOutputFormatter selected. Returning 200 OK.</span>`;
+  } else if(chosen==='application/xml'){
+    out.innerHTML=`<span class="output-status status-200">HTTP 200 OK</span>\n\n<span class="output-header-line">Content-Type:</span> <span class="output-val">application/xml; charset=utf-8</span>\n<span class="output-header-line">Content-Length:</span> <span class="output-val">152</span>\n\n<span class="output-tag">&lt;?xml version="1.0"?&gt;</span>\n<span class="output-tag">&lt;Product&gt;</span>\n  <span class="output-tag">&lt;Id&gt;</span><span class="output-val">1</span><span class="output-tag">&lt;/Id&gt;</span>\n  <span class="output-tag">&lt;Name&gt;</span><span class="output-val">Mechanical Keyboard</span><span class="output-tag">&lt;/Name&gt;</span>\n  <span class="output-tag">&lt;Price&gt;</span><span class="output-val">129.99</span><span class="output-tag">&lt;/Price&gt;</span>\n  <span class="output-tag">&lt;InStock&gt;</span><span class="output-val">true</span><span class="output-tag">&lt;/InStock&gt;</span>\n<span class="output-tag">&lt;/Product&gt;</span>`;
+    traceHtml+=`\n<span style="color:var(--green)">→ XmlSerializerOutputFormatter selected. Returning 200 OK.</span>`;
+  } else if(chosen==='text/csv'){
+    out.innerHTML=`<span class="output-status status-200">HTTP 200 OK</span>\n\n<span class="output-header-line">Content-Type:</span> <span class="output-val">text/csv; charset=utf-8</span>\n<span class="output-header-line">Content-Length:</span> <span class="output-val">46</span>\n\n<span class="output-header-line">Id,Name,Price,InStock</span>\n<span class="output-val">1,Mechanical Keyboard,129.99,true</span>`;
+    traceHtml+=`\n<span style="color:var(--green)">→ CsvOutputFormatter selected. Returning 200 OK.</span>`;
+  }
+
+  trace.innerHTML=traceHtml;
+}
+
+// ─────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  const activeTab=document.querySelector('.tab-content.active');
+  if(!activeTab)return;
+  if(activeTab.id==='tab-1'){
+    if(e.key==='ArrowRight')flAdvance();
+    else if(e.key==='ArrowLeft'){flStep=Math.max(0,flStep-1);flRender(false);}
+    else if(e.key===' '){e.preventDefault();flToggleAuto();}
+    else if(e.key==='r'||e.key==='R')flReset();
+  }
+});
+</script>
+</body>
+</html>

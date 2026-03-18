@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microservice Architecture — Visual Guide</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0d1117;--s2:#161b22;--s3:#1c2230;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e6edf3;--muted:#7d8590;--faint:#2d333b;
+  --accent:#6366f1;--green:#10b981;--amber:#f59e0b;--red:#ef4444;
+  --blue:#60a5fa;--pink:#f472b6;--teal:#2dd4bf;--purple:#a78bfa;
+  --orange:#fb923c;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;
+  background-image:radial-gradient(ellipse at 10% 30%,rgba(99,102,241,.07) 0%,transparent 55%),radial-gradient(ellipse at 90% 70%,rgba(45,212,191,.04) 0%,transparent 50%);}
+
+/* TABS */
+.tabs-bar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--border);padding:0 24px;overflow-x:auto;}
+.tab-btn{padding:15px 18px;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:'Inter',sans-serif;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent);}
+.tab-content{display:none;padding:32px 24px 60px;animation:fadeUp .3s ease both;}
+.tab-content.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* HERO */
+.hero{text-align:center;max-width:720px;margin:0 auto 40px;}
+.hero .badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--accent);padding:5px 16px;border:1px solid rgba(99,102,241,.3);border-radius:20px;margin-bottom:16px;}
+.hero h1{font-size:clamp(24px,4vw,44px);font-weight:700;letter-spacing:-1.5px;line-height:1.05;margin-bottom:14px;}
+.hero h1 em{font-style:normal;color:var(--accent);}
+.hero p{font-size:15px;color:var(--muted);line-height:1.7;}
+
+/* SECTION */
+.section-title{font-size:21px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;}
+.section-sub{font-size:14px;color:var(--muted);margin-bottom:28px;}
+.wrap{max-width:1060px;margin:0 auto;}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;}
+
+/* CODE */
+.code-box{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;color:var(--muted);position:relative;}
+.code-box::before{content:attr(data-label);position:absolute;top:8px;right:12px;font-size:10px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;}
+.kw{color:#79c0ff}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cmt{color:#3d444d}.num{color:var(--amber)}.cls{color:#ffa657}.ok{color:var(--green)}.err{color:var(--red)}.hl{color:var(--text)}
+
+/* MONOLITH vs MICRO */
+.vs-grid{display:grid;grid-template-columns:1fr 60px 1fr;gap:16px;align-items:start;max-width:1060px;margin:0 auto 32px;}
+.vs-panel{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.vs-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.vs-body{padding:20px;}
+.vs-list{display:flex;flex-direction:column;gap:8px;}
+.vs-item{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--muted);line-height:1.5;}
+.vs-sep{display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--faint);padding-top:60px;}
+
+/* ARCHITECTURE DIAGRAM */
+.arch-wrap{max-width:1060px;margin:0 auto;}
+.arch-diagram{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px;}
+.arch-svg-wrap{padding:20px;overflow-x:auto;}
+
+/* SERVICE CARDS */
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;max-width:1060px;margin:0 auto;}
+.svc-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s,transform .2s;cursor:default;}
+.svc-card:hover{transform:translateY(-2px);}
+.svc-card-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.svc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.svc-name{font-size:14px;font-weight:600;}
+.svc-port{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.svc-body{padding:14px 16px;font-size:12px;color:var(--muted);line-height:1.65;}
+.svc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:500;font-family:'JetBrains Mono',monospace;}
+
+/* PATTERNS */
+.patterns-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;max-width:1060px;margin:0 auto;}
+.pattern-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px;transition:border-color .2s;}
+.pattern-card:hover{border-color:var(--border2);}
+.pattern-icon{font-size:26px;margin-bottom:12px;}
+.pattern-title{font-size:15px;font-weight:700;margin-bottom:6px;}
+.pattern-desc{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:12px;}
+.pattern-example{background:var(--s2);border-radius:8px;padding:10px 12px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);}
+
+/* INTERACTIVE FLOW */
+.flow-controls-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.flow-ctrl-btn{padding:9px 16px;border-radius:9px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;transition:all .2s;}
+.flow-ctrl-btn:hover{border-color:var(--border2);color:var(--text);}
+.flow-ctrl-btn.active{color:#fff;border-color:transparent;font-weight:600;}
+
+/* CHALLENGES */
+.challenges-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:1060px;margin:0 auto;}
+.challenge-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px;transition:border-color .2s;}
+.challenge-card:hover{border-color:var(--border2);}
+.ch-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.ch-icon{font-size:22px;}
+.ch-title{font-size:14px;font-weight:700;}
+.ch-desc{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:10px;}
+.ch-solution{padding:8px 10px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);border-radius:8px;font-size:11px;color:var(--green);}
+
+/* DOTNET SETUP */
+.dotnet-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.dn-btn{padding:8px 15px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;transition:all .2s;}
+.dn-btn:hover{color:var(--text);border-color:var(--border2);}
+.dn-btn.active{color:#fff;border-color:transparent;}
+.dn-panel{display:none;animation:fadeUp .25s ease both;}
+.dn-panel.active{display:block;}
+.step-block{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.step-block-hdr{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600;}
+.step-block-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:'JetBrains Mono',monospace;}
+.step-block-body{padding:14px 18px;}
+
+@media(max-width:700px){
+  .tab-content{padding:18px 12px 48px;}
+  .vs-grid{grid-template-columns:1fr;}
+  .vs-sep{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab(0)">① Mono vs Micro</button>
+  <button class="tab-btn" onclick="switchTab(1)">② Architecture Map</button>
+  <button class="tab-btn" onclick="switchTab(2)">③ Core Components</button>
+  <button class="tab-btn" onclick="switchTab(3)">④ Request Flow</button>
+  <button class="tab-btn" onclick="switchTab(4)">⑤ Patterns</button>
+  <button class="tab-btn" onclick="switchTab(5)">⑥ Challenges</button>
+  <button class="tab-btn" onclick="switchTab(6)">⑦ .NET Setup</button>
+</div>
+
+<!-- ═══ TAB 0 — MONO VS MICRO ═══ -->
+<div class="tab-content active" id="tab-0">
+  <div class="hero">
+    <div class="badge">System Design</div>
+    <h1>Microservice <em>Architecture</em></h1>
+    <p>From a single deployable unit to independently scalable services — why, when, and how to make the shift.</p>
+  </div>
+
+  <div class="vs-grid">
+    <!-- Monolith -->
+    <div class="vs-panel" style="border-color:rgba(239,68,68,.25)">
+      <div class="vs-header" style="background:rgba(239,68,68,.06)">
+        <span style="font-size:22px">🧱</span>
+        <div>
+          <div style="font-size:16px;font-weight:700">Monolith</div>
+          <div style="font-size:12px;color:var(--muted)">Everything in one deployable unit</div>
+        </div>
+      </div>
+      <div class="vs-body">
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+            <div style="width:180px;padding:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;text-align:center;font-size:12px;font-weight:600;">UI Layer</div>
+            <div style="width:2px;height:12px;background:var(--faint)"></div>
+            <div style="width:180px;padding:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;text-align:center;font-size:12px;font-weight:600;">Business Logic</div>
+            <div style="width:2px;height:12px;background:var(--faint)"></div>
+            <div style="width:180px;padding:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;text-align:center;font-size:12px;font-weight:600;">Data Access Layer</div>
+            <div style="width:2px;height:12px;background:var(--faint)"></div>
+            <div style="width:180px;padding:8px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;text-align:center;font-size:11px;color:var(--muted);">Single SQL Database</div>
+          </div>
+          <div style="margin-top:14px;padding:10px;background:rgba(239,68,68,.06);border-radius:8px;font-size:11px;text-align:center;color:var(--muted);">⚠️ One bug = redeploy everything</div>
+        </div>
+        <div class="vs-list">
+          <div class="vs-item"><span style="color:var(--green)">✓</span> Simple to develop initially</div>
+          <div class="vs-item"><span style="color:var(--green)">✓</span> Easy to test end-to-end</div>
+          <div class="vs-item"><span style="color:var(--green)">✓</span> No network overhead between modules</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> Deploy entire app for a single change</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> One slow module slows everything down</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> Can't scale individual features</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> Technology stack locked in</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> Team coupling — merge conflicts everywhere</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vs-sep">VS</div>
+
+    <!-- Microservices -->
+    <div class="vs-panel" style="border-color:rgba(16,185,129,.25)">
+      <div class="vs-header" style="background:rgba(16,185,129,.06)">
+        <span style="font-size:22px">🧩</span>
+        <div>
+          <div style="font-size:16px;font-weight:700">Microservices</div>
+          <div style="font-size:12px;color:var(--muted)">Independent, focused services</div>
+        </div>
+      </div>
+      <div class="vs-body">
+        <div style="margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+            <div style="padding:8px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Auth<br>Service</div>
+            <div style="padding:8px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Order<br>Service</div>
+            <div style="padding:8px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Product<br>Service</div>
+            <div style="padding:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Payment<br>Service</div>
+            <div style="padding:8px;background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.25);border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Notif.<br>Service</div>
+            <div style="padding:8px;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.25);border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Report<br>Service</div>
+          </div>
+          <div style="margin-top:10px;padding:8px;background:rgba(16,185,129,.06);border-radius:8px;font-size:11px;text-align:center;color:var(--muted);">✓ Each has its own database</div>
+        </div>
+        <div class="vs-list">
+          <div class="vs-item"><span style="color:var(--green)">✓</span> Deploy services independently</div>
+          <div class="vs-item"><span style="color:var(--green)">✓</span> Scale only what needs scaling</div>
+          <div class="vs-item"><span style="color:var(--green)">✓</span> Different languages per service (polyglot)</div>
+          <div class="vs-item"><span style="color:var(--green)">✓</span> Isolated failures — one service down ≠ all down</div>
+          <div class="vs-item"><span style="color:var(--green)">✓</span> Small teams own individual services</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> Network latency between services</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> Distributed tracing is complex</div>
+          <div class="vs-item"><span style="color:var(--red)">✗</span> More infrastructure to manage</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1060px;margin:0 auto;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.25);border-radius:14px;padding:20px;text-align:center;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px;">When should you switch?</div>
+    <div style="font-size:13px;color:var(--muted);max-width:680px;margin:0 auto;line-height:1.7;">
+      Start with a monolith. Move to microservices when: team grows past ~10 engineers, different features need different scaling profiles, or deployment cycles are blocking each other. Netflix, Uber and Amazon all started as monoliths.
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 1 — ARCHITECTURE MAP ═══ -->
+<div class="tab-content" id="tab-1">
+  <div class="arch-wrap">
+    <div class="section-title">E-Commerce Microservice Architecture</div>
+    <div class="section-sub">A real-world example showing how services, gateways, and messaging fit together</div>
+
+    <div class="arch-diagram">
+      <div class="arch-svg-wrap">
+        <svg width="100%" viewBox="0 0 980 620" style="min-width:700px">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- Clients -->
+          <g>
+            <rect x="20" y="20" width="110" height="44" rx="8" fill="rgba(99,102,241,.12)" stroke="rgba(99,102,241,.4)" stroke-width="1"/>
+            <text x="75" y="38" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="#a5b4fc">Web App</text>
+            <text x="75" y="54" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">React / Vue</text>
+          </g>
+          <g>
+            <rect x="20" y="80" width="110" height="44" rx="8" fill="rgba(99,102,241,.12)" stroke="rgba(99,102,241,.4)" stroke-width="1"/>
+            <text x="75" y="98" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="#a5b4fc">Mobile App</text>
+            <text x="75" y="114" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">iOS / Android</text>
+          </g>
+          <g>
+            <rect x="20" y="140" width="110" height="44" rx="8" fill="rgba(99,102,241,.12)" stroke="rgba(99,102,241,.4)" stroke-width="1"/>
+            <text x="75" y="158" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="#a5b4fc">Partner API</text>
+            <text x="75" y="174" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">3rd party</text>
+          </g>
+
+          <!-- Lines from clients to gateway -->
+          <line x1="130" y1="42" x2="198" y2="100" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+          <line x1="130" y1="102" x2="198" y2="108" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+          <line x1="130" y1="162" x2="198" y2="116" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+
+          <!-- API Gateway -->
+          <rect x="200" y="60" width="140" height="100" rx="12" fill="rgba(245,158,11,.1)" stroke="rgba(245,158,11,.5)" stroke-width="1.5"/>
+          <text x="270" y="90" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#fbbf24">API Gateway</text>
+          <text x="270" y="108" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Rate limiting</text>
+          <text x="270" y="122" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Auth validation</text>
+          <text x="270" y="136" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Load balancing</text>
+          <text x="270" y="150" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">:5000</text>
+
+          <!-- Gateway to services -->
+          <line x1="340" y1="90" x2="418" y2="70" stroke="rgba(245,158,11,.6)" stroke-width="1" marker-end="url(#arr)"/>
+          <line x1="340" y1="100" x2="418" y2="130" stroke="rgba(245,158,11,.6)" stroke-width="1" marker-end="url(#arr)"/>
+          <line x1="340" y1="110" x2="418" y2="200" stroke="rgba(245,158,11,.6)" stroke-width="1" marker-end="url(#arr)"/>
+          <line x1="340" y1="120" x2="418" y2="270" stroke="rgba(245,158,11,.6)" stroke-width="1" marker-end="url(#arr)"/>
+          <line x1="340" y1="130" x2="418" y2="340" stroke="rgba(245,158,11,.6)" stroke-width="1" marker-end="url(#arr)"/>
+
+          <!-- Services -->
+          <!-- Auth -->
+          <rect x="420" y="30" width="150" height="80" rx="10" fill="rgba(16,185,129,.1)" stroke="rgba(16,185,129,.4)" stroke-width="1"/>
+          <text x="495" y="58" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#34d399">Auth Service</text>
+          <text x="495" y="74" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">JWT / OIDC</text>
+          <text x="495" y="88" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">:5001</text>
+
+          <!-- Product -->
+          <rect x="420" y="130" width="150" height="80" rx="10" fill="rgba(99,102,241,.1)" stroke="rgba(99,102,241,.4)" stroke-width="1"/>
+          <text x="495" y="158" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#a5b4fc">Product Svc</text>
+          <text x="495" y="174" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Catalog, Search</text>
+          <text x="495" y="188" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">:5002</text>
+
+          <!-- Order -->
+          <rect x="420" y="230" width="150" height="80" rx="10" fill="rgba(96,165,250,.1)" stroke="rgba(96,165,250,.4)" stroke-width="1"/>
+          <text x="495" y="258" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#93c5fd">Order Service</text>
+          <text x="495" y="274" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Cart, Checkout</text>
+          <text x="495" y="288" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">:5003</text>
+
+          <!-- Payment -->
+          <rect x="420" y="330" width="150" height="80" rx="10" fill="rgba(244,114,182,.1)" stroke="rgba(244,114,182,.4)" stroke-width="1"/>
+          <text x="495" y="358" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#f9a8d4">Payment Svc</text>
+          <text x="495" y="374" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Stripe / Razorpay</text>
+          <text x="495" y="388" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">:5004</text>
+
+          <!-- Message Bus -->
+          <rect x="390" y="450" width="210" height="60" rx="10" fill="rgba(251,146,60,.1)" stroke="rgba(251,146,60,.5)" stroke-width="1.5"/>
+          <text x="495" y="476" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#fdba74">Message Bus</text>
+          <text x="495" y="494" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">RabbitMQ / Azure Service Bus</text>
+
+          <!-- Services to bus -->
+          <line x1="495" y1="410" x2="495" y2="448" stroke="rgba(251,146,60,.5)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+          <line x1="470" y1="310" x2="450" y2="448" stroke="rgba(251,146,60,.4)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+
+          <!-- Notification Service (subscribes to bus) -->
+          <rect x="660" y="430" width="150" height="70" rx="10" fill="rgba(45,212,191,.1)" stroke="rgba(45,212,191,.4)" stroke-width="1"/>
+          <text x="735" y="458" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#5eead4">Notif. Service</text>
+          <text x="735" y="474" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Email / SMS / Push</text>
+          <text x="735" y="488" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">:5005</text>
+          <line x1="600" y1="470" x2="658" y2="468" stroke="rgba(45,212,191,.5)" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+
+          <!-- Report service -->
+          <rect x="660" y="330" width="150" height="80" rx="10" fill="rgba(167,139,250,.1)" stroke="rgba(167,139,250,.4)" stroke-width="1"/>
+          <text x="735" y="358" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="700" fill="#c4b5fd">Report Service</text>
+          <text x="735" y="374" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Analytics, BI</text>
+          <text x="735" y="388" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">:5006</text>
+          <line x1="570" y1="370" x2="658" y2="368" stroke="rgba(167,139,250,.4)" stroke-width="1" marker-end="url(#arr)"/>
+
+          <!-- Databases -->
+          <!-- Auth DB -->
+          <ellipse cx="840" cy="70" rx="55" ry="22" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+          <text x="840" y="68" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#34d399">Auth DB</text>
+          <text x="840" y="80" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#3d444d">PostgreSQL</text>
+          <line x1="570" y1="65" x2="784" y2="68" stroke="rgba(16,185,129,.3)" stroke-width="1" marker-end="url(#arr)"/>
+
+          <!-- Product DB -->
+          <ellipse cx="840" cy="170" rx="55" ry="22" fill="rgba(99,102,241,.08)" stroke="rgba(99,102,241,.3)" stroke-width="1"/>
+          <text x="840" y="168" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#a5b4fc">Product DB</text>
+          <text x="840" y="180" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#3d444d">MongoDB</text>
+          <line x1="570" y1="165" x2="784" y2="168" stroke="rgba(99,102,241,.3)" stroke-width="1" marker-end="url(#arr)"/>
+
+          <!-- Order DB -->
+          <ellipse cx="840" cy="270" rx="55" ry="22" fill="rgba(96,165,250,.08)" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+          <text x="840" y="268" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#93c5fd">Order DB</text>
+          <text x="840" y="280" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#3d444d">PostgreSQL</text>
+          <line x1="570" y1="268" x2="784" y2="268" stroke="rgba(96,165,250,.3)" stroke-width="1" marker-end="url(#arr)"/>
+
+          <!-- Observability -->
+          <rect x="660" y="200" width="150" height="100" rx="10" fill="rgba(125,133,144,.08)" stroke="rgba(125,133,144,.25)" stroke-width="1"/>
+          <text x="735" y="228" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#94a3b8">Observability</text>
+          <text x="735" y="246" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#3d444d">Jaeger / Zipkin</text>
+          <text x="735" y="262" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#3d444d">Prometheus</text>
+          <text x="735" y="278" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#3d444d">Grafana / ELK</text>
+
+          <!-- Service Discovery -->
+          <rect x="200" y="200" width="140" height="70" rx="10" fill="rgba(45,212,191,.08)" stroke="rgba(45,212,191,.3)" stroke-width="1"/>
+          <text x="270" y="226" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#5eead4">Service Discovery</text>
+          <text x="270" y="244" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Consul / K8s DNS</text>
+          <text x="270" y="260" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Health checks</text>
+
+          <!-- Legend -->
+          <text x="30" y="550" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="#7d8590">Legend:</text>
+          <line x1="90" y1="547" x2="130" y2="547" stroke="rgba(245,158,11,.6)" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text x="135" y="551" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Sync (HTTP/gRPC)</text>
+          <line x1="260" y1="547" x2="300" y2="547" stroke="rgba(251,146,60,.5)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+          <text x="305" y="551" font-family="JetBrains Mono,monospace" font-size="10" fill="#7d8590">Async (Events)</text>
+          <ellipse cx="450" cy="547" rx="30" ry="12" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.3)" stroke-width="1"/>
+          <text x="450" y="551" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#34d399">Database</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Key principles -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:18px;margin-bottom:8px;">🗃️</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Database per Service</div>
+        <div style="font-size:12px;color:var(--muted);">Each service owns its data. No shared databases. This enforces loose coupling.</div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:18px;margin-bottom:8px;">🔀</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Single Entry Point</div>
+        <div style="font-size:12px;color:var(--muted);">API Gateway is the only public-facing component. All services hide behind it.</div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:18px;margin-bottom:8px;">📬</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Async Communication</div>
+        <div style="font-size:12px;color:var(--muted);">Services communicate via events/messages, not direct calls — reduces coupling.</div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:18px;margin-bottom:8px;">🔍</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Observability First</div>
+        <div style="font-size:12px;color:var(--muted);">Distributed tracing, metrics, and centralized logging are non-negotiable.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 2 — CORE COMPONENTS ═══ -->
+<div class="tab-content" id="tab-2">
+  <div class="wrap">
+    <div class="section-title">Core Components</div>
+    <div class="section-sub">Every building block in the architecture — what it does and why it exists</div>
+    <div class="services-grid">
+      <div class="svc-card" style="border-color:rgba(245,158,11,.3)" onmouseover="this.style.borderColor='rgba(245,158,11,.5)'" onmouseout="this.style.borderColor='rgba(245,158,11,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(245,158,11,.15)">🔀</div><div><div class="svc-name">API Gateway</div><div class="svc-port">:5000 — YARP / Ocelot</div></div></div>
+        <div class="svc-body">Single entry point for all clients. Handles rate limiting, JWT validation, load balancing, SSL termination, and routing requests to the right microservice. Clients never talk directly to services.
+          <div class="svc-tags"><span class="tag" style="background:rgba(245,158,11,.12);color:#fbbf24">YARP</span><span class="tag" style="background:rgba(245,158,11,.12);color:#fbbf24">Ocelot</span><span class="tag" style="background:rgba(245,158,11,.12);color:#fbbf24">Kong</span></div>
+        </div>
+      </div>
+      <div class="svc-card" style="border-color:rgba(16,185,129,.3)" onmouseover="this.style.borderColor='rgba(16,185,129,.5)'" onmouseout="this.style.borderColor='rgba(16,185,129,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(16,185,129,.15)">🔐</div><div><div class="svc-name">Auth Service</div><div class="svc-port">:5001 — .NET Core + JWT</div></div></div>
+        <div class="svc-body">Issues and validates JWT tokens. Handles login, registration, refresh tokens, and OAuth flows. All other services validate JWT signatures independently — no calls back to auth service per request.
+          <div class="svc-tags"><span class="tag" style="background:rgba(16,185,129,.12);color:#34d399">JWT</span><span class="tag" style="background:rgba(16,185,129,.12);color:#34d399">OIDC</span><span class="tag" style="background:rgba(16,185,129,.12);color:#34d399">Refresh Tokens</span></div>
+        </div>
+      </div>
+      <div class="svc-card" style="border-color:rgba(99,102,241,.3)" onmouseover="this.style.borderColor='rgba(99,102,241,.5)'" onmouseout="this.style.borderColor='rgba(99,102,241,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(99,102,241,.15)">📦</div><div><div class="svc-name">Product Service</div><div class="svc-port">:5002 — .NET Core</div></div></div>
+        <div class="svc-body">Manages product catalog, inventory levels, search, and pricing. Uses MongoDB for flexible product schemas. Publishes events when inventory changes so other services can react.
+          <div class="svc-tags"><span class="tag" style="background:rgba(99,102,241,.12);color:#a5b4fc">MongoDB</span><span class="tag" style="background:rgba(99,102,241,.12);color:#a5b4fc">Elasticsearch</span></div>
+        </div>
+      </div>
+      <div class="svc-card" style="border-color:rgba(96,165,250,.3)" onmouseover="this.style.borderColor='rgba(96,165,250,.5)'" onmouseout="this.style.borderColor='rgba(96,165,250,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(96,165,250,.15)">🛒</div><div><div class="svc-name">Order Service</div><div class="svc-port">:5003 — .NET Core</div></div></div>
+        <div class="svc-body">Handles cart, order creation, order status tracking. Publishes OrderPlaced events to the message bus. Other services (Payment, Notification) subscribe and react. Uses Saga pattern for distributed transactions.
+          <div class="svc-tags"><span class="tag" style="background:rgba(96,165,250,.12);color:#93c5fd">PostgreSQL</span><span class="tag" style="background:rgba(96,165,250,.12);color:#93c5fd">Saga pattern</span></div>
+        </div>
+      </div>
+      <div class="svc-card" style="border-color:rgba(244,114,182,.3)" onmouseover="this.style.borderColor='rgba(244,114,182,.5)'" onmouseout="this.style.borderColor='rgba(244,114,182,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(244,114,182,.15)">💳</div><div><div class="svc-name">Payment Service</div><div class="svc-port">:5004 — .NET Core</div></div></div>
+        <div class="svc-body">Subscribes to OrderPlaced events. Calls payment gateway (Stripe/Razorpay), publishes PaymentSucceeded or PaymentFailed events. Idempotent — same payment request always produces same result.
+          <div class="svc-tags"><span class="tag" style="background:rgba(244,114,182,.12);color:#f9a8d4">Stripe</span><span class="tag" style="background:rgba(244,114,182,.12);color:#f9a8d4">Idempotency</span></div>
+        </div>
+      </div>
+      <div class="svc-card" style="border-color:rgba(45,212,191,.3)" onmouseover="this.style.borderColor='rgba(45,212,191,.5)'" onmouseout="this.style.borderColor='rgba(45,212,191,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(45,212,191,.15)">🔔</div><div><div class="svc-name">Notification Service</div><div class="svc-port">:5005 — .NET Core</div></div></div>
+        <div class="svc-body">Subscribes to multiple events (OrderPlaced, PaymentSucceeded, ShipmentSent). Sends email, SMS, and push notifications. Completely decoupled — other services don't know it exists.
+          <div class="svc-tags"><span class="tag" style="background:rgba(45,212,191,.12);color:#5eead4">SendGrid</span><span class="tag" style="background:rgba(45,212,191,.12);color:#5eead4">Twilio</span></div>
+        </div>
+      </div>
+      <div class="svc-card" style="border-color:rgba(251,146,60,.3)" onmouseover="this.style.borderColor='rgba(251,146,60,.5)'" onmouseout="this.style.borderColor='rgba(251,146,60,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(251,146,60,.15)">📬</div><div><div class="svc-name">Message Bus</div><div class="svc-port">RabbitMQ / Azure SB</div></div></div>
+        <div class="svc-body">The async backbone. Services publish events without caring who listens. Subscribers process events independently. Guarantees at-least-once delivery. Decouples publishers from subscribers completely.
+          <div class="svc-tags"><span class="tag" style="background:rgba(251,146,60,.12);color:#fdba74">RabbitMQ</span><span class="tag" style="background:rgba(251,146,60,.12);color:#fdba74">Azure SB</span><span class="tag" style="background:rgba(251,146,60,.12);color:#fdba74">MassTransit</span></div>
+        </div>
+      </div>
+      <div class="svc-card" style="border-color:rgba(45,212,191,.3)" onmouseover="this.style.borderColor='rgba(45,212,191,.5)'" onmouseout="this.style.borderColor='rgba(45,212,191,.3)'">
+        <div class="svc-card-hdr"><div class="svc-icon" style="background:rgba(45,212,191,.15)">🔍</div><div><div class="svc-name">Service Discovery</div><div class="svc-port">Consul / Kubernetes</div></div></div>
+        <div class="svc-body">Services register themselves on startup. Other services find them by name, not hardcoded IP. Health checks remove unhealthy instances automatically. In Kubernetes, this is built-in via DNS.
+          <div class="svc-tags"><span class="tag" style="background:rgba(45,212,191,.12);color:#5eead4">Consul</span><span class="tag" style="background:rgba(45,212,191,.12);color:#5eead4">K8s DNS</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 3 — REQUEST FLOW ═══ -->
+<div class="tab-content" id="tab-3">
+  <div class="wrap">
+    <div class="section-title">Request Flow — Place an Order</div>
+    <div class="section-sub">Trace a "place order" request through the entire microservice architecture — sync and async paths</div>
+
+    <div class="flow-controls-bar" id="flow-scenario-btns">
+      <button class="flow-ctrl-btn active" onclick="setFlow(0,this)" style="background:#6366f1;color:#fff;border-color:transparent">🛒 Place Order</button>
+      <button class="flow-ctrl-btn" onclick="setFlow(1,this)">🔐 User Login</button>
+      <button class="flow-ctrl-btn" onclick="setFlow(2,this)">🔍 Search Products</button>
+    </div>
+
+    <div id="flow-steps-display"></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 4 — PATTERNS ═══ -->
+<div class="tab-content" id="tab-4">
+  <div class="wrap">
+    <div class="section-title">Essential Microservice Patterns</div>
+    <div class="section-sub">Design patterns that solve the hardest distributed systems problems</div>
+    <div class="patterns-grid">
+      <div class="pattern-card" style="border-color:rgba(251,146,60,.2)">
+        <div class="pattern-icon">🔄</div>
+        <div class="pattern-title" style="color:var(--orange)">Saga Pattern</div>
+        <div class="pattern-desc">Manages distributed transactions across services without a 2-phase commit. A series of local transactions, each publishing events. If one fails, compensating transactions roll back previous steps.</div>
+        <div class="pattern-example"><span style="color:var(--orange)">OrderPlaced</span> → <span style="color:var(--pink)">PaymentDebited</span> → <span style="color:var(--blue)">InventoryReserved</span><br><span style="color:var(--red)">Payment fails</span> → <span style="color:var(--orange)">CompensateOrder</span> → <span style="color:var(--green)">Refund issued</span></div>
+      </div>
+      <div class="pattern-card" style="border-color:rgba(96,165,250,.2)">
+        <div class="pattern-icon">⚡</div>
+        <div class="pattern-title" style="color:var(--blue)">Circuit Breaker</div>
+        <div class="pattern-desc">Prevents cascading failures. When a service starts failing (e.g. 50% error rate), the circuit "opens" and immediately returns an error instead of waiting for timeout. After a cooldown, it half-opens to test recovery.</div>
+        <div class="pattern-example"><span style="color:var(--blue)">Closed</span> (normal) → <span style="color:var(--red)">Open</span> (failures) → <span style="color:var(--amber)">Half-Open</span> → <span style="color:var(--blue)">Closed</span><br><span style="color:var(--muted)">// Polly library in .NET Core</span></div>
+      </div>
+      <div class="pattern-card" style="border-color:rgba(16,185,129,.2)">
+        <div class="pattern-icon">📮</div>
+        <div class="pattern-title" style="color:var(--green)">Outbox Pattern</div>
+        <div class="pattern-desc">Solves the dual-write problem: saving to DB and publishing an event in a single atomic operation. Write the event to an "outbox" table in the same DB transaction. A background worker publishes it to the bus.</div>
+        <div class="pattern-example"><span style="color:var(--muted)">BEGIN TRANSACTION</span><br><span style="color:var(--blue)">INSERT INTO Orders</span> <span style="color:var(--green)">✓</span><br><span style="color:var(--pink)">INSERT INTO Outbox</span> <span style="color:var(--green)">✓</span><br><span style="color:var(--muted)">COMMIT</span> — then publish async</div>
+      </div>
+      <div class="pattern-card" style="border-color:rgba(167,139,250,.2)">
+        <div class="pattern-icon">🎭</div>
+        <div class="pattern-title" style="color:var(--purple)">CQRS</div>
+        <div class="pattern-desc">Command Query Responsibility Segregation. Separate the write model (commands: CreateOrder) from the read model (queries: GetOrders). Write to PostgreSQL, read from a denormalized MongoDB or Redis read model optimized for queries.</div>
+        <div class="pattern-example"><span style="color:var(--pink)">Command</span>: CreateOrderCommand → <span style="color:var(--blue)">Write DB</span><br><span style="color:var(--teal)">Query</span>: GetOrdersQuery → <span style="color:var(--amber)">Read DB (fast)</span><br><span style="color:var(--muted)">// MediatR library in .NET</span></div>
+      </div>
+      <div class="pattern-card" style="border-color:rgba(244,114,182,.2)">
+        <div class="pattern-icon">🔁</div>
+        <div class="pattern-title" style="color:var(--pink)">Retry + Backoff</div>
+        <div class="pattern-desc">Transient failures (network blips, temporary overload) are normal in distributed systems. Automatically retry failed calls with exponential backoff — wait 1s, 2s, 4s, 8s — to avoid thundering herd.</div>
+        <div class="pattern-example"><span style="color:var(--muted)">// Polly in .NET Core</span><br>Policy.Handle&lt;HttpRequestException&gt;()<br>  .WaitAndRetryAsync(<span style="color:var(--amber)">3</span>,<br>    i => TimeSpan.FromSeconds(Math.Pow(<span style="color:var(--amber)">2</span>, i)))</div>
+      </div>
+      <div class="pattern-card" style="border-color:rgba(45,212,191,.2)">
+        <div class="pattern-icon">🌊</div>
+        <div class="pattern-title" style="color:var(--teal)">Bulkhead</div>
+        <div class="pattern-desc">Isolates failures like a ship's compartments. Limit thread pool / connection pool per downstream service. If Payment Service is slow, it only consumes its own resource pool — Order Service isn't affected.</div>
+        <div class="pattern-example"><span style="color:var(--teal)">PaymentClient</span>: max 10 concurrent calls<br><span style="color:var(--blue)">ProductClient</span>: max 20 concurrent calls<br><span style="color:var(--muted)">// Polly Bulkhead policy</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 5 — CHALLENGES ═══ -->
+<div class="tab-content" id="tab-5">
+  <div class="wrap">
+    <div class="section-title">Challenges & How to Solve Them</div>
+    <div class="section-sub">Microservices introduce distributed systems complexity. Here's what to expect and how to handle it.</div>
+    <div class="challenges-grid">
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">🔍</span><div class="ch-title">Distributed Tracing</div></div>
+        <div class="ch-desc">A single user request touches 5 services. When something fails, how do you find where? Traditional logs are useless — you need to correlate across services.</div>
+        <div class="ch-solution">✓ Solution: OpenTelemetry + Jaeger / Zipkin. Propagate TraceId across service boundaries. One trace ID follows the request end-to-end.</div>
+      </div>
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">💸</span><div class="ch-title">Distributed Transactions</div></div>
+        <div class="ch-desc">You can't use SQL transactions across services with separate databases. "Charge payment AND place order" must be atomic — but they're in different DBs.</div>
+        <div class="ch-solution">✓ Solution: Saga Pattern with compensating transactions. Accept eventual consistency. Use the Outbox Pattern for reliable event publishing.</div>
+      </div>
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">📡</span><div class="ch-title">Service-to-Service Latency</div></div>
+        <div class="ch-desc">A monolith makes in-process calls (nanoseconds). Microservices make network calls (milliseconds). 10 services in a request chain = 10× the latency.</div>
+        <div class="ch-solution">✓ Solution: Async messaging where possible. gRPC for sync calls (faster than REST). Redis caching. Avoid chatty service-to-service calls — aggregate in a BFF.</div>
+      </div>
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">🔀</span><div class="ch-title">Service Discovery</div></div>
+        <div class="ch-desc">Services scale up and down. Their IPs change constantly. Hardcoding "http://payment-service:5004" breaks when IP changes or new instances spin up.</div>
+        <div class="ch-solution">✓ Solution: Consul or Kubernetes DNS. Services register on startup and deregister on shutdown. Health checks remove dead instances automatically.</div>
+      </div>
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">📋</span><div class="ch-title">Data Consistency</div></div>
+        <div class="ch-desc">Services have their own DBs. A product shown in Order Service may be out of date vs Product Service. Eventual consistency means data is temporarily inconsistent.</div>
+        <div class="ch-solution">✓ Solution: Accept eventual consistency. Use events to sync data. Design UIs to handle stale data. Use the Saga pattern for critical flows.</div>
+      </div>
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">🔒</span><div class="ch-title">Auth Across Services</div></div>
+        <div class="ch-desc">Each service needs to verify who the caller is. Calling auth service from every other service on every request creates a bottleneck and tight coupling.</div>
+        <div class="ch-solution">✓ Solution: JWT tokens. Auth service issues signed tokens. Every other service validates the signature independently — no auth service calls per request.</div>
+      </div>
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">🔄</span><div class="ch-title">Cascading Failures</div></div>
+        <div class="ch-desc">Payment Service goes down. Order Service waits for it, consuming threads. Gateway waits for Order Service. Everything grinds to a halt from one failure.</div>
+        <div class="ch-solution">✓ Solution: Circuit Breaker pattern (Polly library). Timeouts everywhere. Bulkhead isolation. Fail fast — don't let one slow service drag down others.</div>
+      </div>
+      <div class="challenge-card">
+        <div class="ch-header"><span class="ch-icon">📦</span><div class="ch-title">Deployment Complexity</div></div>
+        <div class="ch-desc">10 services = 10 CI/CD pipelines, 10 Docker images, 10 Kubernetes deployments. Infrastructure complexity grows massively vs a single monolith deployment.</div>
+        <div class="ch-solution">✓ Solution: Docker + Kubernetes. Helm charts for templating. GitOps with ArgoCD. .NET Aspire for local development orchestration.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 6 — .NET SETUP ═══ -->
+<div class="tab-content" id="tab-6">
+  <div class="wrap">
+    <div class="section-title">.NET Core Microservice Setup</div>
+    <div class="section-sub">Hands-on code for the key infrastructure pieces</div>
+    <div class="dotnet-nav" id="dn-nav"></div>
+    <div id="dn-panels"></div>
+  </div>
+</div>
+
+<script>
+function switchTab(i){
+  document.querySelectorAll('.tab-content').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.querySelectorAll('.tab-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+}
+
+// ─── FLOWS ───
+const FLOWS = [
+  {
+    title:'🛒 Place Order — Full Request Trace',
+    color:'#6366f1',
+    steps:[
+      {icon:'💻',label:'Client',color:'#6366f1',title:'POST /api/orders',desc:'User clicks "Buy Now". React app sends POST request with JWT token in Authorization header.',type:'sync'},
+      {icon:'🔀',label:'API Gateway',color:'#f59e0b',title:'Validates JWT + Routes',desc:'Gateway validates JWT signature (no auth service call). Checks rate limits. Routes to Order Service at :5003.',type:'sync'},
+      {icon:'🔐',label:'Auth Middleware',color:'#10b981',title:'JWT Claims extracted',desc:'Order Service middleware extracts userId, email, roles from JWT claims. No database lookup needed.',type:'sync'},
+      {icon:'🛒',label:'Order Service',color:'#60a5fa',title:'Creates order in DB',desc:'Validates cart. Writes Order (status: Pending) to PostgreSQL. Also writes OrderPlaced event to Outbox table in the same transaction.',type:'sync'},
+      {icon:'📬',label:'Message Bus',color:'#fb923c',title:'OrderPlaced event published',desc:'Background worker reads Outbox, publishes OrderPlaced event to RabbitMQ. Order Service returns 201 Created to client immediately.',type:'async'},
+      {icon:'💳',label:'Payment Service',color:'#f472b6',title:'Subscribes to OrderPlaced',desc:'Independently picks up the event. Calls Stripe API. Publishes PaymentSucceeded or PaymentFailed event.',type:'async'},
+      {icon:'📦',label:'Product Service',color:'#a78bfa',title:'Reserves inventory',desc:'Subscribes to OrderPlaced. Decrements stock. Publishes InventoryUpdated event.',type:'async'},
+      {icon:'🔔',label:'Notification Service',color:'#2dd4bf',title:'Sends confirmation email',desc:'Subscribes to PaymentSucceeded. Sends order confirmation email via SendGrid. Customer gets email within seconds.',type:'async'},
+    ]
+  },
+  {
+    title:'🔐 User Login — Auth Flow',
+    color:'#10b981',
+    steps:[
+      {icon:'💻',label:'Client',color:'#6366f1',title:'POST /api/auth/login',desc:'User submits email + password. Sent over HTTPS to API Gateway.',type:'sync'},
+      {icon:'🔀',label:'API Gateway',color:'#f59e0b',title:'Routes to Auth Service',desc:'This endpoint has no [Authorize] — it\'s public. Gateway routes directly to Auth Service.',type:'sync'},
+      {icon:'🔐',label:'Auth Service',color:'#10b981',title:'Validates credentials',desc:'Looks up user in Auth DB (PostgreSQL). Verifies BCrypt password hash. On success, generates JWT + Refresh Token.',type:'sync'},
+      {icon:'🎟️',label:'Auth Service',color:'#10b981',title:'Issues JWT token',desc:'Creates JWT with claims: userId, email, roles, exp (1 hour). Signs with HMAC-SHA256 secret. Also issues a 30-day refresh token.',type:'sync'},
+      {icon:'💻',label:'Client',color:'#6366f1',title:'Stores tokens',desc:'Browser stores JWT in memory (not localStorage for security). Refresh token in httpOnly cookie. All subsequent requests include Bearer token.',type:'sync'},
+    ]
+  },
+  {
+    title:'🔍 Search Products — Read Path',
+    color:'#a78bfa',
+    steps:[
+      {icon:'💻',label:'Client',color:'#6366f1',title:'GET /api/products?q=keyboard',desc:'User types in search box. React app debounces, sends GET request with query params.',type:'sync'},
+      {icon:'🔀',label:'API Gateway',color:'#f59e0b',title:'Validates + Routes',desc:'Validates JWT (optional for public catalog). Routes to Product Service. Checks cache headers.',type:'sync'},
+      {icon:'📦',label:'Product Service',color:'#a78bfa',title:'Checks Redis cache',desc:'Cache key: products:search:keyboard. If cache hit → return immediately (sub-millisecond). Cache miss → query Elasticsearch.',type:'sync'},
+      {icon:'🔍',label:'Elasticsearch',color:'#f59e0b',title:'Full-text search',desc:'Returns matching products with relevance scores, facets (brand, price range). Results cached in Redis with 5-min TTL.',type:'sync'},
+      {icon:'💻',label:'Client',color:'#6366f1',title:'Renders results',desc:'Product list renders in <100ms. No auth service calls, no order service calls — completely independent read path.',type:'sync'},
+    ]
+  }
+];
+
+function setFlow(i,btn){
+  document.querySelectorAll('.flow-ctrl-btn').forEach(b=>{b.classList.remove('active');b.style.background='';b.style.color='';b.style.borderColor='';});
+  btn.classList.add('active');btn.style.background=FLOWS[i].color;btn.style.color='#fff';btn.style.borderColor='transparent';
+  renderFlow(i);
+}
+function renderFlow(i){
+  const f=FLOWS[i];
+  const el=document.getElementById('flow-steps-display');
+  el.style.animation='none';void el.offsetWidth;el.style.animation='fadeUp .3s ease both';
+  el.innerHTML=`
+    <div style="font-size:15px;font-weight:700;margin-bottom:20px;">${f.title}</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#6366f1"></span> Sync (HTTP)</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);margin-left:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fb923c"></span> Async (Events)</span>
+    </div>
+    ${f.steps.map((s,si)=>`
+      <div style="display:flex;gap:14px;margin-bottom:12px;align-items:flex-start;">
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${s.color}18;border:1.5px solid ${s.color};display:flex;align-items:center;justify-content:center;font-size:16px;">${s.icon}</div>
+          ${si<f.steps.length-1?`<div style="width:2px;height:24px;background:${s.type==='async'?'rgba(251,146,60,.3)':s.color+'30'};margin-top:4px;${s.type==='async'?'border-right:2px dashed rgba(251,146,60,.4);width:0':''};"></div>`:''}
+        </div>
+        <div style="flex:1;padding:14px 16px;background:var(--s1);border:1px solid ${s.color}25;border-radius:12px;border-left:3px solid ${s.type==='async'?'#fb923c':s.color};">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:600;color:${s.color};font-family:'JetBrains Mono',monospace;">${s.label}</span>
+            <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${s.type==='async'?'rgba(251,146,60,.12)':'rgba(99,102,241,.12)'};color:${s.type==='async'?'#fdba74':'#a5b4fc'};font-family:'JetBrains Mono',monospace;">${s.type}</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${s.title}</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">${s.desc}</div>
+        </div>
+      </div>`).join('')}`;
+}
+renderFlow(0);
+
+// ─── .NET SETUP PANELS ───
+const DN_PANELS = [
+  {
+    label:'API Gateway (YARP)', color:'#f59e0b',
+    steps:[
+      {num:1,color:'#f59e0b',title:'Install YARP',desc:'Yet Another Reverse Proxy — Microsoft\'s .NET native reverse proxy',
+      code:`<span class="ok">$</span> dotnet new web -n ApiGateway
+<span class="ok">$</span> dotnet add package Yarp.ReverseProxy`,lang:'Terminal'},
+      {num:2,color:'#f59e0b',title:'Program.cs',desc:'Configure YARP with JWT validation',
+      code:`builder.Services.<span class="fn">AddReverseProxy</span>()
+    .<span class="fn">LoadFromConfig</span>(builder.Configuration.GetSection(<span class="str">"ReverseProxy"</span>));
+
+builder.Services.<span class="fn">AddAuthentication</span>(JwtBearerDefaults.AuthenticationScheme)
+    .<span class="fn">AddJwtBearer</span>(...); <span class="cmt">// validate tokens here — once</span>
+
+app.<span class="fn">UseAuthentication</span>();
+app.<span class="fn">UseAuthorization</span>();
+app.<span class="fn">MapReverseProxy</span>();`,lang:'Program.cs'},
+      {num:3,color:'#f59e0b',title:'appsettings.json',desc:'Route configuration',
+      code:`{
+  <span class="str">"ReverseProxy"</span>: {
+    <span class="str">"Routes"</span>: {
+      <span class="str">"products-route"</span>: {
+        <span class="str">"ClusterId"</span>: <span class="str">"products-cluster"</span>,
+        <span class="str">"Match"</span>: { <span class="str">"Path"</span>: <span class="str">"/api/products/{**catch-all}"</span> }
+      },
+      <span class="str">"orders-route"</span>: {
+        <span class="str">"ClusterId"</span>: <span class="str">"orders-cluster"</span>,
+        <span class="str">"Match"</span>: { <span class="str">"Path"</span>: <span class="str">"/api/orders/{**catch-all}"</span>,
+          <span class="str">"Headers"</span>: [{ <span class="str">"Name"</span>: <span class="str">"Authorization"</span>, <span class="str">"Mode"</span>: <span class="str">"Exists"</span> }] }
+      }
+    },
+    <span class="str">"Clusters"</span>: {
+      <span class="str">"products-cluster"</span>: {
+        <span class="str">"Destinations"</span>: { <span class="str">"d1"</span>: { <span class="str">"Address"</span>: <span class="str">"http://product-service:5002/"</span> } }
+      }
+    }
+  }
+}`,lang:'appsettings.json'}
+    ]
+  },
+  {
+    label:'MassTransit + RabbitMQ', color:'#fb923c',
+    steps:[
+      {num:1,color:'#fb923c',title:'Install MassTransit',desc:'The .NET messaging library that abstracts RabbitMQ, Azure SB, etc.',
+      code:`<span class="ok">$</span> dotnet add package MassTransit
+<span class="ok">$</span> dotnet add package MassTransit.RabbitMQ`,lang:'Terminal'},
+      {num:2,color:'#fb923c',title:'Publisher (Order Service)',desc:'Publish an event after saving to DB',
+      code:`<span class="cmt">// OrderPlacedEvent.cs</span>
+<span class="kw">public record</span> <span class="cls">OrderPlacedEvent</span>(
+    Guid OrderId, Guid UserId,
+    List&lt;<span class="cls">OrderItem</span>&gt; Items, <span class="kw">decimal</span> Total);
+
+<span class="cmt">// OrderService.cs</span>
+<span class="kw">public class</span> <span class="cls">OrderService</span>(IBus bus, AppDbContext db)
+{
+    <span class="kw">public async</span> Task <span class="fn">PlaceOrderAsync</span>(<span class="cls">PlaceOrderDto</span> dto)
+    {
+        <span class="kw">var</span> order = <span class="kw">new</span> <span class="cls">Order</span>(dto);
+        db.Orders.<span class="fn">Add</span>(order);
+        <span class="kw">await</span> db.<span class="fn">SaveChangesAsync</span>(); <span class="cmt">// save first</span>
+
+        <span class="kw">await</span> bus.<span class="fn">Publish</span>(<span class="kw">new</span> <span class="cls">OrderPlacedEvent</span>(
+            order.Id, dto.UserId, dto.Items, order.Total));
+    }
+}`,lang:'OrderService.cs'},
+      {num:3,color:'#fb923c',title:'Consumer (Payment Service)',desc:'Subscribe and handle the event',
+      code:`<span class="kw">public class</span> <span class="cls">OrderPlacedConsumer</span>(IPaymentGateway gw)
+    : IConsumer&lt;<span class="cls">OrderPlacedEvent</span>&gt;
+{
+    <span class="kw">public async</span> Task <span class="fn">Consume</span>(ConsumeContext&lt;<span class="cls">OrderPlacedEvent</span>&gt; ctx)
+    {
+        <span class="kw">var</span> evt = ctx.Message;
+        <span class="kw">var</span> result = <span class="kw">await</span> gw.<span class="fn">ChargeAsync</span>(evt.UserId, evt.Total);
+
+        <span class="kw">if</span> (result.Success)
+            <span class="kw">await</span> ctx.<span class="fn">Publish</span>(<span class="kw">new</span> <span class="cls">PaymentSucceededEvent</span>(evt.OrderId));
+        <span class="kw">else</span>
+            <span class="kw">await</span> ctx.<span class="fn">Publish</span>(<span class="kw">new</span> <span class="cls">PaymentFailedEvent</span>(evt.OrderId));
+    }
+}`,lang:'PaymentConsumer.cs'},
+      {num:4,color:'#fb923c',title:'Register in Program.cs',desc:'Wire up MassTransit with RabbitMQ',
+      code:`builder.Services.<span class="fn">AddMassTransit</span>(x => {
+    x.<span class="fn">AddConsumer</span>&lt;<span class="cls">OrderPlacedConsumer</span>&gt;();
+
+    x.<span class="fn">UsingRabbitMq</span>((ctx, cfg) => {
+        cfg.<span class="fn">Host</span>(<span class="str">"rabbitmq://localhost"</span>);
+        cfg.<span class="fn">ConfigureEndpoints</span>(ctx);
+    });
+});`,lang:'Program.cs'}
+    ]
+  },
+  {
+    label:'Circuit Breaker (Polly)', color:'#60a5fa',
+    steps:[
+      {num:1,color:'#60a5fa',title:'Install Polly',desc:'The resilience library for .NET',
+      code:`<span class="ok">$</span> dotnet add package Microsoft.Extensions.Http.Polly`,lang:'Terminal'},
+      {num:2,color:'#60a5fa',title:'Resilience pipeline',desc:'Retry + Circuit Breaker + Timeout combined',
+      code:`builder.Services.<span class="fn">AddHttpClient</span>&lt;<span class="cls">IPaymentClient</span>, <span class="cls">PaymentClient</span>&gt;()
+    .<span class="fn">AddPolicyHandler</span>(
+        Policy&lt;HttpResponseMessage&gt;
+            .<span class="fn">Handle</span>&lt;HttpRequestException&gt;()
+            .<span class="fn">OrResult</span>(r => !r.IsSuccessStatusCode)
+            <span class="cmt">// Retry 3x with exponential backoff</span>
+            .<span class="fn">WaitAndRetryAsync</span>(<span class="num">3</span>,
+                i => TimeSpan.<span class="fn">FromSeconds</span>(Math.<span class="fn">Pow</span>(<span class="num">2</span>, i)))
+    )
+    .<span class="fn">AddPolicyHandler</span>(
+        Policy&lt;HttpResponseMessage&gt;
+            .<span class="fn">Handle</span>&lt;HttpRequestException&gt;()
+            <span class="cmt">// Open circuit after 5 failures, reset after 30s</span>
+            .<span class="fn">CircuitBreakerAsync</span>(<span class="num">5</span>,
+                TimeSpan.<span class="fn">FromSeconds</span>(<span class="num">30</span>))
+    );`,lang:'Program.cs'}
+    ]
+  },
+  {
+    label:'OpenTelemetry Tracing', color:'#2dd4bf',
+    steps:[
+      {num:1,color:'#2dd4bf',title:'Install packages',desc:'OpenTelemetry with Jaeger exporter',
+      code:`<span class="ok">$</span> dotnet add package OpenTelemetry.Extensions.Hosting
+<span class="ok">$</span> dotnet add package OpenTelemetry.Instrumentation.AspNetCore
+<span class="ok">$</span> dotnet add package OpenTelemetry.Instrumentation.Http
+<span class="ok">$</span> dotnet add package OpenTelemetry.Exporter.Jaeger`,lang:'Terminal'},
+      {num:2,color:'#2dd4bf',title:'Program.cs — wire up tracing',desc:'Propagates TraceId across all service calls automatically',
+      code:`builder.Services.<span class="fn">AddOpenTelemetry</span>()
+    .<span class="fn">WithTracing</span>(tracing =>
+    {
+        tracing
+            .<span class="fn">AddAspNetCoreInstrumentation</span>() <span class="cmt">// incoming requests</span>
+            .<span class="fn">AddHttpClientInstrumentation</span>() <span class="cmt">// outgoing calls</span>
+            .<span class="fn">AddEntityFrameworkCoreInstrumentation</span>() <span class="cmt">// DB queries</span>
+            .<span class="fn">AddJaegerExporter</span>(o => {
+                o.AgentHost = <span class="str">"jaeger"</span>;
+                o.AgentPort = <span class="num">6831</span>;
+            })
+            .<span class="fn">SetResourceBuilder</span>(ResourceBuilder
+                .<span class="fn">CreateDefault</span>()
+                .<span class="fn">AddService</span>(<span class="str">"order-service"</span>));
+    });`,lang:'Program.cs'}
+    ]
+  },
+];
+
+function renderDnNav(){
+  const nav=document.getElementById('dn-nav');
+  const panels=document.getElementById('dn-panels');
+  nav.innerHTML=DN_PANELS.map((p,i)=>`<button class="dn-btn ${i===0?'active':''}" style="${i===0?'background:'+p.color+';color:#fff;border-color:transparent':''}" onclick="switchDn(${i},this)">${p.label}</button>`).join('');
+  panels.innerHTML=DN_PANELS.map((p,i)=>`
+    <div class="dn-panel ${i===0?'active':''}" id="dn-panel-${i}">
+      ${p.steps.map(s=>`
+        <div class="step-block">
+          <div class="step-block-hdr">
+            <div class="step-block-num" style="background:${s.color}18;color:${s.color}">${s.num}</div>
+            <div><div>${s.title}</div><div style="font-size:12px;color:var(--muted);margin-top:2px;font-weight:400">${s.desc}</div></div>
+          </div>
+          <div class="step-block-body"><div class="code-box" data-label="${s.lang}">${s.code}</div></div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+function switchDn(i,btn){
+  document.querySelectorAll('.dn-btn').forEach(b=>{b.classList.remove('active');b.style.background='';b.style.color='';b.style.borderColor='';});
+  document.querySelectorAll('.dn-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+  btn.classList.add('active');btn.style.background=DN_PANELS[i].color;btn.style.color='#fff';btn.style.borderColor='transparent';
+}
+renderDnNav();
+</script>
+</body>
+</html>
