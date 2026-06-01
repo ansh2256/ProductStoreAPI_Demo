@@ -1,6 +1,17 @@
 # ProductStore API — Complete Demo Project
 # ASP.NET Core Web API with EF Core, JWT, Swagger
 
+## Storage Variants
+
+This demo supports both storage options:
+
+1. JSON file mode (no SQL Server install required)
+2. SQL Server mode (EF Core + migrations)
+
+JSON file path used by demo mode:
+
+`ProductStoreAPI/App_Data/products.json`
+
 ## Project Structure
 ```
 ProductStoreAPI/
@@ -27,11 +38,13 @@ ProductStoreAPI/
 dotnet new webapi -n ProductStoreAPI
 cd ProductStoreAPI
 
-# Install packages
-dotnet add package Microsoft.EntityFrameworkCore.SqlServer
-dotnet add package Microsoft.EntityFrameworkCore.Tools
-dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
-dotnet add package Swashbuckle.AspNetCore
+# Common packages (both variants)
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.0
+dotnet add package Swashbuckle.AspNetCore --version 6.6.2
+
+# SQL Server variant only
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.0
+dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.0
 ```
 
 ---
@@ -344,6 +357,8 @@ public class ProductsController : ControllerBase
 
 ## STEP 8: appsettings.json
 
+### Variant A: SQL Server
+
 ```json
 {
   "ConnectionStrings": {
@@ -362,9 +377,28 @@ public class ProductsController : ControllerBase
 }
 ```
 
+### Variant B: JSON File Storage
+
+```json
+{
+    "JwtSettings": {
+        "SecretKey": "ThisIsMyVerySecretKey123!@#MustBe256Bits",
+        "Issuer": "ProductStoreAPI",
+        "Audience": "ProductStoreClients",
+        "ExpiryMinutes": "60"
+    },
+    "Logging": {
+        "LogLevel": { "Default": "Information" }
+    },
+    "AllowedHosts": "*"
+}
+```
+
 ---
 
 ## STEP 9: Program.cs (Complete)
+
+### Variant A: SQL Server
 
 ```csharp
 using System.Text;
@@ -476,9 +510,104 @@ using (var scope = app.Services.CreateScope())
 app.Run();
 ```
 
+### Variant B: JSON File Storage (current demo repo mode)
+
+```csharp
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using ProductStoreAPI.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddScoped<JwtService>();
+builder.Services.AddSingleton<ProductFileStore>();
+
+builder.Services.AddControllers();
+
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"]!;
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(secretKey))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ProductStore API",
+        Version = "v1",
+        Description = "A simple Product CRUD API with JWT Authentication"
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter: Bearer {your JWT token here}"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ProductStore API v1");
+        c.RoutePrefix = string.Empty;
+    });
+}
+
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+
 ---
 
 ## STEP 10: Run Migrations & Start
+
+### Variant A: SQL Server
 
 ```bash
 # Create migration
@@ -489,23 +618,146 @@ dotnet ef database update
 
 # Run the app
 dotnet run
+```
+
+### Variant B: JSON File Storage
+
+```bash
+# Run the app
+dotnet run
 
 # Open browser at: https://localhost:{port}
 # Swagger UI will be at the root
 ```
 
+In JSON mode, products are persisted in ProductStoreAPI/App_Data/products.json.
+
 ---
 
 ## API Quick Reference
 
-| Method | URL | Auth | Description |
-|--------|-----|------|-------------|
-| GET | /api/products | None | List all products |
-| GET | /api/products/{id} | None | Get one product |
-| POST | /api/auth/login | None | Get JWT token |
-| POST | /api/products | Admin JWT | Create product |
-| PUT | /api/products/{id} | Admin JWT | Update product |
-| DELETE | /api/products/{id} | Admin JWT | Delete product |
+| Method | URL Pattern | Auth | Description |
+|--------|-------------|------|-------------|
+| GET | /api/v{version}/products OR /api/products | None | List all products |
+| GET | /api/v{version}/products/{id} OR /api/products/{id} | None | Get one product |
+| POST | /api/v{version}/auth/login OR /api/auth/login | None | Get JWT token |
+| POST | /api/v{version}/products OR /api/products | Admin JWT | Create product |
+| PUT | /api/v{version}/products/{id} OR /api/products/{id} | Admin JWT | Update product |
+| DELETE | /api/v{version}/products/{id} OR /api/products/{id} | Admin JWT | Delete product |
+
+## API Versioning Examples
+
+This project now supports **all common API versioning styles at the same time**:
+
+1. URL segment versioning
+2. Query string versioning
+3. Header versioning
+4. Media type versioning
+
+Install versioning packages (already added in this repo):
+
+```bash
+dotnet add package Asp.Versioning.Mvc --version 8.0.0
+dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0
+```
+
+Program.cs versioning setup:
+
+```csharp
+using Asp.Versioning;
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new QueryStringApiVersionReader("api-version"),
+        new HeaderApiVersionReader("x-api-version"),
+        new MediaTypeApiVersionReader("ver")
+    );
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+```
+
+Products controller route + versions:
+
+```csharp
+[ApiController]
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
+[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/products")]
+public class ProductsController : ControllerBase
+{
+    [HttpGet]
+    [MapToApiVersion("1.0")]
+        public IActionResult GetV1() => Ok(/* classic v1 shape */);
+
+    [HttpGet]
+    [MapToApiVersion("2.0")]
+        public IActionResult GetV2() => Ok(/* enriched v2 shape */);
+}
+```
+
+### 1) URL Segment Versioning
+
+```http
+GET /api/v1/products
+GET /api/v2/products
+GET /api/v1/products/1
+GET /api/v2/products/1
+```
+
+### 2) Query String Versioning
+
+```http
+GET /api/products?api-version=1.0
+GET /api/products?api-version=2.0
+```
+
+### 3) Header Versioning
+
+```http
+GET /api/products
+x-api-version: 1.0
+
+GET /api/products
+x-api-version: 2.0
+```
+
+### 4) Media Type Versioning
+
+```http
+GET /api/products
+Accept: application/json;ver=1.0
+
+GET /api/products
+Accept: application/json;ver=2.0
+```
+
+Quick versioning test calls (curl):
+
+```bash
+curl "https://localhost:7119/api/v1/products"
+curl "https://localhost:7119/api/v2/products"
+curl "https://localhost:7119/api/products?api-version=2.0"
+curl -H "x-api-version: 2.0" "https://localhost:7119/api/products"
+curl -H "Accept: application/json;ver=2.0" "https://localhost:7119/api/products"
+```
+
+### v1 vs v2 behavior in this demo
+
+- `v1` returns the original product list/object format.
+- `v2` returns an enriched response:
+    - list endpoint includes `version`, `totalCount`, and `items`
+    - single-item endpoint includes `version`, `item`, and `inventoryStatus`
+
+Use the HTTP request collection in `ProductStoreAPI/ProductStoreAPI.http` to run all four versioning styles quickly from VS Code.
 
 ## Test Credentials (Demo only!)
 - Admin: username=`admin`, password=`admin123`
